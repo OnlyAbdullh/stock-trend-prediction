@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-trend-prediction"
+version = "0.1.0"
+description = "Neural network for stock trend prediction"
+authors = [
+    { name = "Muhammad Aydi" },
+    { name = "Abdullah Alkasem"},
+    { name = "Alaa Alshahrour"},
+    { name = "Manar Ajaj Alkurdy"},
+    { name = "Abdulrahman Aljomaat"}
+]
+dependencies = []
