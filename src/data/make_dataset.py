@@ -80,6 +80,26 @@ def handle_missing_values(
     )
     return df_clean
 
+import pandas as pd
+
+def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
+
+    df = df.copy()
+
+    cond_close = df["close"] != 0
+    cond_high_low = df["high"] >= df["low"]
+    cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
+    cond_volume = df["volume"] >= 0
+
+    valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
+
+    n_before = len(df)
+    df = df[valid_mask].copy()
+    n_after = len(df)
+
+    print(f"Removed invalid rows: {n_before - n_after}")
+
+    return df
 
 def drop_ticker_date_duplicates(
     df: pd.DataFrame,
@@ -99,6 +119,23 @@ def drop_ticker_date_duplicates(
     bad_tickers = bad_tickers[bad_tickers > max_duplicates_per_ticker].index
     df = df[~df["ticker"].isin(bad_tickers)]
     df = df.drop_duplicates(subset=["ticker", "date"], keep="first")
+    return df
+
+def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    cond_close = df["close"] != 0
+    cond_high_low = df["high"] >= df["low"]
+    cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
+    cond_volume = df["volume"] >= 0
+
+    valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
+
+    n_before = len(df)
+    df = df[valid_mask].copy()
+    n_after = len(df)
+
+    print(f"Removed invalid rows: {n_before - n_after}")
     return df
 
 @click.command()
