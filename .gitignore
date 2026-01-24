@@ -22,6 +22,9 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+src/data/raw/sample_submission.csv
+src/data/raw/test.csv
+src/data/raw/train.csv
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
