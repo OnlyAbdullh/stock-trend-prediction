@@ -5,7 +5,6 @@ import pandas as pd
 
 
 def clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean basic structure and dtypes of raw stock DataFrame."""
     df = df.copy()
     df.columns = (
         df.columns
@@ -27,7 +26,6 @@ def clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
     df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
-
     df["ticker"] = df["ticker"].astype(str).str.strip()
 
     return df
@@ -38,7 +36,6 @@ def handle_missing_values(
         max_na_fraction=0.10,
 ) -> pd.DataFrame:
     df = df.copy()
-
     price_cols = list(price_cols)
 
     removed_tickers = 0
@@ -80,26 +77,6 @@ def handle_missing_values(
     )
     return df_clean
 
-import pandas as pd
-
-def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
-
-    df = df.copy()
-
-    cond_close = df["close"] != 0
-    cond_high_low = df["high"] >= df["low"]
-    cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
-    cond_volume = df["volume"] >= 0
-
-    valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
-
-    n_before = len(df)
-    df = df[valid_mask].copy()
-    n_after = len(df)
-
-    print(f"Removed invalid rows: {n_before - n_after}")
-
-    return df
 
 def drop_ticker_date_duplicates(
     df: pd.DataFrame,
@@ -123,28 +100,42 @@ def drop_ticker_date_duplicates(
 
 def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-
     cond_close = df["close"] != 0
     cond_high_low = df["high"] >= df["low"]
     cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
     cond_volume = df["volume"] >= 0
 
     valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
-
-    n_before = len(df)
     df = df[valid_mask].copy()
-    n_after = len(df)
-
-    print(f"Removed invalid rows: {n_before - n_after}")
     return df
 
 @click.command()
 @click.argument("input_filepath", type=click.Path(exists=True))
 @click.argument("output_filepath", type=click.Path())
 def main(input_filepath, output_filepath):
-    df_raw = pd.read_csv(input_filepath)
-    df_clean = clean_stock_df(df_raw)
+    logging.basicConfig(level=logging.INFO)
 
+    input_path = Path(input_filepath)
     output_path = Path(output_filepath)
+
+    data_dir = Path("data")
+    interim_dir = data_dir / "interim"
+    processed_dir = data_dir / "processed"
+    interim_dir.mkdir(parents=True, exist_ok=True)
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logging.info("Reading raw data from %s", input_path)
+    df_raw = pd.read_csv(input_path)
+
+    df_clean = clean_stock_df(df_raw)
+    df_clean = handle_missing_values(df_clean)
+    df_clean = remove_invalid_rows(df_clean)
+    df_clean = drop_ticker_date_duplicates(df_clean)
+
+    logging.info("Saving cleaned data to %s", output_path)
     df_clean.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
