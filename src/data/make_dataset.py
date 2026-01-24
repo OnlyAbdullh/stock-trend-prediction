@@ -81,6 +81,26 @@ def handle_missing_values(
     return df_clean
 
 
+def drop_ticker_date_duplicates(
+    df: pd.DataFrame,
+    max_duplicates_per_ticker: int = 10
+) -> pd.DataFrame:
+    df = df.copy()
+    dup_counts = (
+        df.groupby(["ticker", "date"])
+        .size()
+        .reset_index(name="n")
+    )
+    bad_tickers = (
+        dup_counts[dup_counts["n"] > 1]
+        .groupby("ticker")["n"]
+        .sum()
+    )
+    bad_tickers = bad_tickers[bad_tickers > max_duplicates_per_ticker].index
+    df = df[~df["ticker"].isin(bad_tickers)]
+    df = df.drop_duplicates(subset=["ticker", "date"], keep="first")
+    return df
+
 @click.command()
 @click.argument("input_filepath", type=click.Path(exists=True))
 @click.argument("output_filepath", type=click.Path())
