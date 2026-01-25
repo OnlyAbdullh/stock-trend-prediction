@@ -109,23 +109,74 @@ def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
     df = df[valid_mask].copy()
     return df
 
-@click.command()
-@click.argument("input_filepath", type=click.Path(exists=True))
-@click.argument("output_filepath", type=click.Path())
-def main(input_filepath, output_filepath):
-    logging.basicConfig(level=logging.INFO)
+def filter_by_start_date(
+    df: pd.DataFrame,
+    start_date: str = "2010-01-01"
+) -> pd.DataFrame:
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    mask = df["date"] >= pd.to_datetime(start_date)
+    return df[mask].copy()
 
-    input_path = Path(input_filepath)
-    output_path = Path(output_filepath)
+def remove_corrupted_tickers(
+    df: pd.DataFrame,
+    price_col: str = "close",
+    iqr_factor: float = 1.5,
+    threshold: float = 25.0,
+) -> tuple[pd.DataFrame, list[str]]:
+    """
+    يحسب العوائد + القيم المتطرفة لكل سهم داخلياً،
+    ثم يحذف الأسهم التي نسبة القيم المتطرفة فيها تتجاوز threshold٪.
+    """
 
-    data_dir = Path("data")
-    interim_dir = data_dir / "interim"
-    processed_dir = data_dir / "processed"
-    interim_dir.mkdir(parents=True, exist_ok=True)
-    processed_dir.mkdir(parents=True, exist_ok=True)
+    df = df.copy()
+    df = df.sort_values(["ticker", "date"])
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df["return"] = (
+        df.groupby("ticker")[price_col]
+        .pct_change()
+    )
 
+    def mark_outliers(group: pd.DataFrame) -> pd.DataFrame:
+        g = group.copy()
+        valid = g["return"].dropna()
+
+        if valid.empty:
+            g["return_is_outlier"] = False
+            return g
+
+        q1 = valid.quantile(0.25)
+        q3 = valid.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - iqr_factor * iqr
+        upper = q3 + iqr_factor * iqr
+
+        g["return_is_outlier"] = (g["return"] < lower) | (g["return"] > upper)
+        return g
+
+    df_marked = (
+        df
+        .groupby("ticker", group_keys=False)
+        .apply(mark_outliers)
+    )
+
+    summary = (
+        df_marked
+        .groupby("ticker")
+        .agg(
+            n_rows=("return", "count"),
+            n_outliers=("return_is_outlier", "sum"),
+        )
+    )
+    summary["outliers_ratio"] = summary["n_outliers"] / summary["n_rows"] * 100
+
+    bad_tickers = summary[summary["outliers_ratio"] > threshold].index.tolist()
+
+    df_cleaned = df_marked[~df_marked["ticker"].isin(bad_tickers)].copy()
+
+    return df_cleaned, bad_tickers
+
+def run_basic_clean(input_path: Path, basic_clean_path: Path) -> pd.DataFrame:
     logging.info("Reading raw data from %s", input_path)
     df_raw = pd.read_csv(input_path)
 
@@ -134,8 +185,82 @@ def main(input_filepath, output_filepath):
     df_clean = remove_invalid_rows(df_clean)
     df_clean = drop_ticker_date_duplicates(df_clean)
 
-    logging.info("Saving cleaned data to %s", output_path)
-    df_clean.to_csv(output_path, index=False)
+    if basic_clean_path.exists():
+        logging.info("Basic-clean file %s already exists. Skipping save.", basic_clean_path)
+    else:
+        basic_clean_path.parent.mkdir(parents=True, exist_ok=True)
+        logging.info("Saving basic cleaned data to %s", basic_clean_path)
+        df_clean.to_csv(basic_clean_path, index=False)
+
+    return df_clean
+
+
+def run_filter_after_2010(basic_clean_path: Path, after_2010_path: Path) -> pd.DataFrame:
+    logging.info("Reading basic-clean data from %s", basic_clean_path)
+    df_basic = pd.read_csv(basic_clean_path)
+
+    df_after_2010 = filter_by_start_date(df_basic, "2010-01-01")
+
+    if after_2010_path.exists():
+        logging.info("File %s already exists. Skipping save.", after_2010_path)
+    else:
+        after_2010_path.parent.mkdir(parents=True, exist_ok=True)
+        logging.info("Saving data after 2010-01-01 to %s", after_2010_path)
+        df_after_2010.to_csv(after_2010_path, index=False)
+
+    return df_after_2010
+
+def run_remove_corrupted_tickers(
+    after_2010_path: Path,
+    bad_tickers_path: Path,
+    price_col: str = "close",
+    iqr_factor: float = 1.5,
+    threshold: float = 25.0,
+):
+    logging.info("Reading data (after 2010) from %s", after_2010_path)
+    df_after_2010 = pd.read_csv(after_2010_path)
+
+    df_step1, removed_tickers = remove_corrupted_tickers(
+        df_after_2010,
+        price_col=price_col,
+        iqr_factor=iqr_factor,
+        threshold=threshold,
+    )
+
+    if bad_tickers_path.exists():
+        logging.info("File %s already exists. Skipping save.", bad_tickers_path)
+    else:
+        bad_tickers_path.parent.mkdir(parents=True, exist_ok=True)
+        logging.info("Saving data after removing corrupted tickers to %s", bad_tickers_path)
+        df_step1.to_csv(bad_tickers_path, index=False)
+
+    return df_step1, removed_tickers
+
+@click.command()
+@click.argument("input_filepath", type=click.Path(exists=True))
+def main(input_filepath):
+    logging.basicConfig(level=logging.INFO)
+
+    data_dir = Path("data")
+    interim_dir = data_dir / "interim"
+    interim_dir.mkdir(parents=True, exist_ok=True)
+
+    input_path = Path(input_filepath)
+
+    basic_clean_path = interim_dir / "train_clean_basic.csv"
+    after_2010_path = interim_dir / "train_clean_after_2010.csv"
+    bad_tickers_path = interim_dir / "train_clean_after_2010_and_bad_tickers.csv"
+
+    run_basic_clean(input_path, basic_clean_path)
+    run_filter_after_2010(basic_clean_path, after_2010_path)
+    run_remove_corrupted_tickers(
+        after_2010_path,
+        bad_tickers_path,
+        price_col="close",
+        iqr_factor=1.5,
+        threshold=25.0,
+    )
+
 
 if __name__ == "__main__":
     main()
