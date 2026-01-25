@@ -215,7 +215,7 @@ def main(input_filepath: str):
         iqr_factor=1.5,
         threshold=25.0,
     )
-    final_interim_path = interim_dir / "train_clean_final.csv"
+    final_interim_path = interim_dir / "train_clean_after_2010_and_bad_tickers.csv"
     logging.info(
         "Saving final cleaned data (after removing corrupted tickers) to %s",
         final_interim_path,
