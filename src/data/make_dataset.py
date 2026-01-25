@@ -109,16 +109,12 @@ def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
     df = df[valid_mask].copy()
     return df
 
-def filter_by_start_date(
-    df: pd.DataFrame,
-    start_date: str = "2010-01-01"
-) -> pd.DataFrame:
+def filter_by_start_date(df: pd.DataFrame, start_date: str) -> pd.DataFrame:
     df = df.copy()
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    mask = df["date"] >= pd.to_datetime(start_date)
-    return df[mask].copy()
+    df = df[df["date"] >= start_date]
+    return df
 
-def remove_corrupted_tickers(
+def remove_corrupted_tickers_df(
     df: pd.DataFrame,
     price_col: str = "close",
     iqr_factor: float = 1.5,
@@ -128,7 +124,6 @@ def remove_corrupted_tickers(
     يحسب العوائد + القيم المتطرفة لكل سهم داخلياً،
     ثم يحذف الأسهم التي نسبة القيم المتطرفة فيها تتجاوز threshold٪.
     """
-
     df = df.copy()
     df = df.sort_values(["ticker", "date"])
 
@@ -152,6 +147,7 @@ def remove_corrupted_tickers(
         upper = q3 + iqr_factor * iqr
 
         g["return_is_outlier"] = (g["return"] < lower) | (g["return"] > upper)
+        g.loc[g["return"].isna(), "return_is_outlier"] = False
         return g
 
     df_marked = (
@@ -176,69 +172,21 @@ def remove_corrupted_tickers(
 
     return df_cleaned, bad_tickers
 
-def run_basic_clean(input_path: Path, basic_clean_path: Path) -> pd.DataFrame:
-    logging.info("Reading raw data from %s", input_path)
-    df_raw = pd.read_csv(input_path)
 
-    df_clean = clean_stock_df(df_raw)
-    df_clean = handle_missing_values(df_clean)
-    df_clean = remove_invalid_rows(df_clean)
-    df_clean = drop_ticker_date_duplicates(df_clean)
+def run_basic_clean_df(df_raw: pd.DataFrame) -> pd.DataFrame:
+    df = clean_stock_df(df_raw)
+    df = handle_missing_values(df)
+    df = remove_invalid_rows(df)
+    df = drop_ticker_date_duplicates(df)
+    return df
 
-    if basic_clean_path.exists():
-        logging.info("Basic-clean file %s already exists. Skipping save.", basic_clean_path)
-    else:
-        basic_clean_path.parent.mkdir(parents=True, exist_ok=True)
-        logging.info("Saving basic cleaned data to %s", basic_clean_path)
-        df_clean.to_csv(basic_clean_path, index=False)
+def filter_after_2010_df(df: pd.DataFrame) -> pd.DataFrame:
+    return filter_by_start_date(df, "2010-01-01")
 
-    return df_clean
-
-
-def run_filter_after_2010(basic_clean_path: Path, after_2010_path: Path) -> pd.DataFrame:
-    logging.info("Reading basic-clean data from %s", basic_clean_path)
-    df_basic = pd.read_csv(basic_clean_path)
-
-    df_after_2010 = filter_by_start_date(df_basic, "2010-01-01")
-
-    if after_2010_path.exists():
-        logging.info("File %s already exists. Skipping save.", after_2010_path)
-    else:
-        after_2010_path.parent.mkdir(parents=True, exist_ok=True)
-        logging.info("Saving data after 2010-01-01 to %s", after_2010_path)
-        df_after_2010.to_csv(after_2010_path, index=False)
-
-    return df_after_2010
-
-def run_remove_corrupted_tickers(
-    after_2010_path: Path,
-    bad_tickers_path: Path,
-    price_col: str = "close",
-    iqr_factor: float = 1.5,
-    threshold: float = 25.0,
-):
-    logging.info("Reading data (after 2010) from %s", after_2010_path)
-    df_after_2010 = pd.read_csv(after_2010_path)
-
-    df_step1, removed_tickers = remove_corrupted_tickers(
-        df_after_2010,
-        price_col=price_col,
-        iqr_factor=iqr_factor,
-        threshold=threshold,
-    )
-
-    if bad_tickers_path.exists():
-        logging.info("File %s already exists. Skipping save.", bad_tickers_path)
-    else:
-        bad_tickers_path.parent.mkdir(parents=True, exist_ok=True)
-        logging.info("Saving data after removing corrupted tickers to %s", bad_tickers_path)
-        df_step1.to_csv(bad_tickers_path, index=False)
-
-    return df_step1, removed_tickers
 
 @click.command()
 @click.argument("input_filepath", type=click.Path(exists=True))
-def main(input_filepath):
+def main(input_filepath: str):
     logging.basicConfig(level=logging.INFO)
 
     data_dir = Path("data")
@@ -247,20 +195,32 @@ def main(input_filepath):
 
     input_path = Path(input_filepath)
 
+    logging.info("Reading raw data from %s", input_path)
+    df = pd.read_csv(input_path)
+    print(len(df))
+    # basic clean
+    df = run_basic_clean_df(df)
     basic_clean_path = interim_dir / "train_clean_basic.csv"
+    logging.info("Saving basic cleaned data to %s", basic_clean_path)
+    df.to_csv(basic_clean_path, index=False)
+    # بعد 2010
+    df = filter_after_2010_df(df)
     after_2010_path = interim_dir / "train_clean_after_2010.csv"
-    bad_tickers_path = interim_dir / "train_clean_after_2010_and_bad_tickers.csv"
-
-    run_basic_clean(input_path, basic_clean_path)
-    run_filter_after_2010(basic_clean_path, after_2010_path)
-    run_remove_corrupted_tickers(
-        after_2010_path,
-        bad_tickers_path,
+    logging.info("Saving data after 2010-01-01 to %s", after_2010_path)
+    df.to_csv(after_2010_path, index=False)
+    # إزالة الأسهم الفاسدة
+    df, removed_tickers = remove_corrupted_tickers_df(
+        df,
         price_col="close",
         iqr_factor=1.5,
         threshold=25.0,
     )
-
+    final_interim_path = interim_dir / "train_clean_final.csv"
+    logging.info(
+        "Saving final cleaned data (after removing corrupted tickers) to %s",
+        final_interim_path,
+    )
+    df.to_csv(final_interim_path, index=False)
 
 if __name__ == "__main__":
     main()
