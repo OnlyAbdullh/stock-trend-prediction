@@ -2,9 +2,29 @@
 -e .
 
 # external requirements
+
+#Purpose: Build command-line interfaces (CLI)
+#Lets you write commands like:
+#   python train.py --epochs 50 --lr 0.001
+#Handles arguments, options, help messages automatically
 click
+
+# Purpose: Documentation generator
+# Converts docstrings + .rst / .md files into HTML or PDF docs
 Sphinx
-coverage
-awscli
+
+# Purpose: Code quality & style checker
+# Detects:
+#   Syntax errors
+#   Unused imports
+#   Bad formatting (PEP8)
 flake8
-python-dotenv>=0.5.1
+
+# Purpose: Environment variable management
+# Loads .env file automatically:
+# API_KEY=abc123
+# Accessed in Python via:
+# import os
+# os.getenv("API_KEY")
+# python-dotenv>=0.5.1
+python-dotenv

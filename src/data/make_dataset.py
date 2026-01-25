@@ -1,30 +1,141 @@
-# -*- coding: utf-8 -*-
-import click
-import logging
 from pathlib import Path
-from dotenv import find_dotenv, load_dotenv
+import logging
+import click
+import pandas as pd
 
+
+def clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.replace(r"\s+", "_", regex=True)
+        .str.replace(r"[^\w]", "", regex=True)
+        .str.lower()
+    )
+    required_cols = ["date", "ticker", "open", "high", "low", "close", "volume", "dividends", "stock_splits"]
+
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    price_cols = ["open", "high", "low", "close"]
+    for c in price_cols:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+    df["ticker"] = df["ticker"].astype(str).str.strip()
+
+    return df
+
+def handle_missing_values(
+        df: pd.DataFrame,
+        price_cols=("open", "high", "low", "close"),
+        max_na_fraction=0.10,
+) -> pd.DataFrame:
+    df = df.copy()
+    price_cols = list(price_cols)
+
+    removed_tickers = 0
+    removed_rows = 0
+
+    def process_ticker(g: pd.DataFrame) -> pd.DataFrame:
+        nonlocal removed_tickers, removed_rows
+
+        rows_before = len(g)
+        g = g.sort_values("date")
+
+        while not g.empty and g[price_cols].iloc[0].isna().any():
+            g = g.iloc[1:]
+
+        while not g.empty and g[price_cols].iloc[-1].isna().any():
+            g = g.iloc[:-1]
+
+        if g.empty:
+            removed_tickers += 1
+            removed_rows += rows_before
+            return g
+
+        na_fraction = g[price_cols].isna().mean().mean()
+
+        if na_fraction > max_na_fraction:
+            removed_tickers += 1
+            removed_rows += rows_before
+            return g.iloc[0:0]
+
+        g[price_cols] = g[price_cols].ffill().bfill()
+        removed_rows += (rows_before - len(g))
+
+        return g
+
+    df_clean = (
+        df
+        .groupby("ticker", group_keys=False)
+        .apply(process_ticker)
+    )
+    return df_clean
+
+
+def drop_ticker_date_duplicates(
+    df: pd.DataFrame,
+    max_duplicates_per_ticker: int = 10
+) -> pd.DataFrame:
+    df = df.copy()
+    dup_counts = (
+        df.groupby(["ticker", "date"])
+        .size()
+        .reset_index(name="n")
+    )
+    bad_tickers = (
+        dup_counts[dup_counts["n"] > 1]
+        .groupby("ticker")["n"]
+        .sum()
+    )
+    bad_tickers = bad_tickers[bad_tickers > max_duplicates_per_ticker].index
+    df = df[~df["ticker"].isin(bad_tickers)]
+    df = df.drop_duplicates(subset=["ticker", "date"], keep="first")
+    return df
+
+def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    cond_close = df["close"] != 0
+    cond_high_low = df["high"] >= df["low"]
+    cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
+    cond_volume = df["volume"] >= 0
+
+    valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
+    df = df[valid_mask].copy()
+    return df
 
 @click.command()
-@click.argument('input_filepath', type=click.Path(exists=True))
-@click.argument('output_filepath', type=click.Path())
+@click.argument("input_filepath", type=click.Path(exists=True))
+@click.argument("output_filepath", type=click.Path())
 def main(input_filepath, output_filepath):
-    """ Runs data processing scripts to turn raw data from (../raw) into
-        cleaned data ready to be analyzed (saved in ../processed).
-    """
-    logger = logging.getLogger(__name__)
-    logger.info('making final data set from raw data')
+    logging.basicConfig(level=logging.INFO)
 
+    input_path = Path(input_filepath)
+    output_path = Path(output_filepath)
 
-if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
+    data_dir = Path("data")
+    interim_dir = data_dir / "interim"
+    processed_dir = data_dir / "processed"
+    interim_dir.mkdir(parents=True, exist_ok=True)
+    processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # not used in this stub but often useful for finding various files
-    project_dir = Path(__file__).resolve().parents[2]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # find .env automagically by walking up directories until it's found, then
-    # load up the .env entries as environment variables
-    load_dotenv(find_dotenv())
+    logging.info("Reading raw data from %s", input_path)
+    df_raw = pd.read_csv(input_path)
 
+    df_clean = clean_stock_df(df_raw)
+    df_clean = handle_missing_values(df_clean)
+    df_clean = remove_invalid_rows(df_clean)
+    df_clean = drop_ticker_date_duplicates(df_clean)
+
+    logging.info("Saving cleaned data to %s", output_path)
+    df_clean.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
     main()
