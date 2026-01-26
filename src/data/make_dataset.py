@@ -100,14 +100,16 @@ def drop_ticker_date_duplicates(
 
 def remove_invalid_rows(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+
+    cond_open = df["open"] != 0
     cond_close = df["close"] != 0
     cond_high_low = df["high"] >= df["low"]
     cond_open_range = (df["open"] >= df["low"]) & (df["open"] <= df["high"])
-    cond_volume = df["volume"] >= 0
+    cond_volume = df["volume"] > 0
+    valid_mask = cond_open & cond_close & cond_high_low & cond_open_range & cond_volume
 
-    valid_mask = cond_close & cond_high_low & cond_open_range & cond_volume
-    df = df[valid_mask].copy()
-    return df
+    removed = (~valid_mask).sum()
+    return df[valid_mask].copy()
 
 def filter_by_start_date(df: pd.DataFrame, start_date: str) -> pd.DataFrame:
     df = df.copy()
@@ -197,7 +199,6 @@ def main(input_filepath: str):
 
     logging.info("Reading raw data from %s", input_path)
     df = pd.read_csv(input_path)
-    print(len(df))
     # basic clean
     df = run_basic_clean_df(df)
     basic_clean_path = interim_dir / "train_clean_basic.csv"
