@@ -26,9 +26,8 @@ def get_data_set(window_size = 60):
         if n < window_size + horizon:
             continue
 
-
-        close =  group['close'].values.astype(np.float32)
-        missing =  group["missing_days"].values.astype(np.int8)
+        close = group['close'].values.astype(np.float32)
+        missing = group["missing_days"].values.astype(np.int8)
         bad = (missing > 0).astype(np.int32)
         bad_cumsum = np.cumsum(bad)
 
@@ -37,16 +36,18 @@ def get_data_set(window_size = 60):
 
         ticker_data[ticker] = group[FEATURE_COLS].values.astype(np.float32)
 
+        dates = group['date'].values
         for i in range(window_size, n - horizon):
             seq_start = i - window_size + 1
             seq_end = i + horizon
 
-            if has_gap(seq_start,seq_end):
+            if has_gap(seq_start, seq_end):
                 continue
 
             label = 1 if close[i + horizon] > close[i] else 0
 
-            samples.append((ticker, i, label))
-
+            date = dates[i]
+            samples.append((ticker, i, label, date))
+    StockDataset.ticker_data = ticker_data
     print(f"✓ Processed {len(samples):,} samples from {len(ticker_data)} tickers")
-    return StockDataset(ticker_data, samples, window_size=window_size, horizon=30)
+    return StockDataset(samples, window_size=window_size, horizon=30)
