@@ -3,6 +3,7 @@ import random
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from typing import List, Tuple
 
 from src.data.stock_dataset import StockDataset
 
@@ -11,7 +12,7 @@ torch.manual_seed(42)
 random.seed(42)
 from tqdm import tqdm
 import pandas as pd
-def get_data_set(window_size = 60):
+def build_samples(window_size = 60):
     print("Loading CSV...")
     df = pd.read_csv('../data/processed/data.csv')
 
@@ -50,4 +51,21 @@ def get_data_set(window_size = 60):
             samples.append((ticker, i, label, date))
     StockDataset.ticker_data = ticker_data
     print(f"✓ Processed {len(samples):,} samples from {len(ticker_data)} tickers")
-    return StockDataset(samples, window_size=window_size, horizon=30)
+    return samples
+
+
+def split_samples_time_based(
+        samples: List[Tuple[str, int, int, object]],
+        train_ratio: float = 0.7,
+        val_ratio: float = 0.15,
+):
+    samples_sorted = sorted(samples, key=lambda x: x[3])
+
+    n = len(samples_sorted)
+    n_train = int(n * train_ratio)
+    n_val = int(n * val_ratio)
+
+    train_samples = samples_sorted[:n_train]
+    val_samples = samples_sorted[n_train:n_train + n_val]
+    test_samples = samples_sorted[n_train + n_val:]
+    return train_samples, val_samples, test_samples
