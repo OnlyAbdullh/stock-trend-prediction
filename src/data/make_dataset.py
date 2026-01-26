@@ -240,7 +240,6 @@ def remove_global_gaps(df: pd.DataFrame) -> pd.DataFrame:
         errors="ignore"
     )
 
-    local_gaps.to_csv('data/interim/local_gaps.csv', index=False)
     return df_no_global_gaps
 
 @click.command()
