@@ -35,9 +35,8 @@ def get_data_set(window_size = 60):
         def has_gap(a, b):
             return bad_cumsum[b] - (bad_cumsum[a - 1] if a > 0 else 0) > 0
 
-        ticker_data[ticker] = {
-            'features': group[FEATURE_COLS].values.astype(np.float32),
-        }
+        ticker_data[ticker] = group[FEATURE_COLS].values.astype(np.float32)
+
         for i in range(window_size, n - horizon):
             seq_start = i - window_size + 1
             seq_end = i + horizon
