@@ -28,3 +28,8 @@ flake8
 # os.getenv("API_KEY")
 # python-dotenv>=0.5.1
 python-dotenv
+
+numpy
+pandas
+matplotlib
+seaborn
