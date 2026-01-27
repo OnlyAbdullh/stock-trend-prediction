@@ -6,11 +6,12 @@ import torch.nn as nn
 
 class GRUModel(nn.Module):
     def __init__(
-        self,
-        input_size: int,
-        hidden_size: int = 128,
-        num_layers: int = 2,
-        bidirectional: bool = False,
+            self,
+            input_size: int,
+            hidden_size: int = 128,
+            num_layers: int = 2,
+            dropout: float = 0.3,
+            bidirectional: bool = True,
     ):
         super().__init__()
 
@@ -27,12 +28,19 @@ class GRUModel(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
             bidirectional=bidirectional,
         )
 
+        self.batch_norm = nn.BatchNorm1d(self.actual_hidden_size)
+
         self.fc1 = nn.Linear(self.actual_hidden_size, 64)
         self.relu = nn.ReLU()
+        self.dropout1 = nn.Dropout(dropout)
+
         self.fc2 = nn.Linear(64, 32)
+        self.dropout2 = nn.Dropout(dropout)
+
         self.fc3 = nn.Linear(32, 1)
 
         self._init_weights()
@@ -49,25 +57,26 @@ class GRUModel(nn.Module):
                 nn.init.xavier_uniform_(param.data)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (batch, seq_len, input_size)
         gru_out, h_n = self.gru(x)
-        # h_n: (num_layers*num_directions, batch, hidden_size)
 
         if self.bidirectional:
             h_forward = h_n[-2, :, :]
             h_backward = h_n[-1, :, :]
-            context = torch.cat([h_forward, h_backward], dim=1)  # (batch, 2*hidden)
+            context = torch.cat([h_forward, h_backward], dim=1)
         else:
             context = h_n[-1, :, :]
 
+        context = self.batch_norm(context)
+
         out = self.fc1(context)
         out = self.relu(out)
+        out = self.dropout1(out)
 
         out = self.fc2(out)
         out = self.relu(out)
+        out = self.dropout2(out)
 
         out = self.fc3(out)
 
-        return out.squeeze(-1)                 # (batch,)
-
+        return out.squeeze(-1)
 
