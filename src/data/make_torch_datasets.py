@@ -1,0 +1,71 @@
+import random
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+from typing import List, Tuple
+
+from src.data.stock_dataset import StockDataset
+
+np.random.seed(42)
+torch.manual_seed(42)
+random.seed(42)
+from tqdm import tqdm
+import pandas as pd
+def build_samples(window_size = 60):
+    print("Loading CSV...")
+    df = pd.read_csv('../data/processed/data.csv')
+
+    ticker_data = {}
+    samples = []
+    horizon = 30
+    FEATURE_COLS = []
+    for ticker, group in tqdm(df.groupby('ticker'), desc="Processing tickers"):
+        group = group.sort_values('date').reset_index(drop=True)
+        n = len(group)
+
+        if n < window_size + horizon:
+            continue
+
+        close = group['close'].values.astype(np.float32)
+        missing = group["missing_days"].values.astype(np.int8)
+        bad = (missing > 0).astype(np.int32)
+        bad_cumsum = np.cumsum(bad)
+
+        def has_gap(a, b):
+            return bad_cumsum[b] - (bad_cumsum[a - 1] if a > 0 else 0) > 0
+
+        ticker_data[ticker] = group[FEATURE_COLS].values.astype(np.float32)
+
+        dates = group['date'].values
+        for i in range(window_size, n - horizon):
+            seq_start = i - window_size + 1
+            seq_end = i + horizon
+
+            if has_gap(seq_start, seq_end):
+                continue
+
+            label = 1 if close[i + horizon] > close[i] else 0
+
+            date = dates[i]
+            samples.append((ticker, i, label, date))
+    StockDataset.ticker_data = ticker_data
+    print(f"✓ Processed {len(samples):,} samples from {len(ticker_data)} tickers")
+    return samples
+
+
+def split_samples_time_based(
+        samples: List[Tuple[str, int, int, object]],
+        train_ratio: float = 0.7,
+        val_ratio: float = 0.15,
+):
+    samples_sorted = sorted(samples, key=lambda x: x[3])
+
+    n = len(samples_sorted)
+    n_train = int(n * train_ratio)
+    n_val = int(n * val_ratio)
+
+    train_samples = samples_sorted[:n_train]
+    val_samples = samples_sorted[n_train:n_train + n_val]
+    test_samples = samples_sorted[n_train + n_val:]
+    return train_samples, val_samples, test_samples

@@ -15,11 +15,11 @@ from torch.utils.data import Dataset
 class StockDataset(Dataset):
     """Ultra-fast dataset using pre-converted numpy arrays"""
 
-    def __init__(self, ticker_data, samples, window_size=60, horizon=30):
+    def __init__(self, ticker_data, samples, window_size=60):
         self.ticker_data = ticker_data
         self.samples = samples
         self.window_size = window_size
-        self.horizon = horizon
+
 
     def __len__(self):
         return len(self.samples)
@@ -32,7 +32,7 @@ class StockDataset(Dataset):
         X = data['features'][i - self.window_size:i].copy()
 
         close_now = data['close'][i - 1]
-        close_future = data['close'][i + self.horizon]
+        close_future = data['close'][i + 29]
         y = float(close_future > close_now)
 
         return torch.from_numpy(X), torch.tensor(y, dtype=torch.float32)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
         # Load data
         print("Loading CSV...")
-        df = pd.read_csv('../data/interim/train_clean_2010.csv')
+        df = pd.read_csv('data/interim/train_clean_2010.csv')
 
         # Extract Features
         print("Engineering features...")
@@ -94,7 +94,7 @@ if __name__ == '__main__':
         ticker_data = {}
         samples = []
         window_size = 60
-        horizon = 30
+        horizon = 29
 
         for ticker, group in tqdm(df.groupby('ticker'), desc="Processing tickers"):
             group = group.sort_values('date').reset_index(drop=True)
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         dataset,
         batch_size=4096,
         shuffle=True,
-        num_workers=4,
+        num_workers=6,
         pin_memory=True,
         persistent_workers=True,
         prefetch_factor=3
