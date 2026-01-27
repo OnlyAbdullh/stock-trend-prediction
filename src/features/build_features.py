@@ -26,7 +26,7 @@ print("="*80)
 
 print("\n[1] LOADING DATA...")
 # Load the dataset
-df = pd.read_csv('C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/interim/train_clean_after_2010_and_bad_tickers.csv')
+df = pd.read_csv(r'D:\Stock_trend_project\data\interim\train_clean_after_2010_and_bad_tickers.csv')
 
 # Convert date to datetime
 df['date'] = pd.to_datetime(df['date'])
@@ -221,27 +221,9 @@ target_column = ['target']
 
 # Final feature list (28 features)
 feature_columns = [
-
-    # Critical Features (4)
-    'max_drawdown_20',
-    'recent_high_20',
-    'recent_low_20',
-    'downside_deviation_10',
-
-    # Normalized Price (3)
-    'high_to_close_ratio',
-    'low_to_close_ratio',
-    'price_position_20',
-
-    # Price Position (3)
-    'distance_from_high',
-    'distance_from_low',
-    'close_30d_ago',
-
-    # Moving Averages (3)
-    'MA_5',
-    'MA_20',
-    'MA_60',
+    # Price Features (3)
+    'daily_return',
+    'high_low_ratio',
 
     # MA-Based (4)
     'price_to_MA5',
@@ -254,41 +236,25 @@ feature_columns = [
     'RSI_14',
     'parkinson_volatility',
 
-    # Price Features (3)
-    'daily_return',
-    'high_low_ratio',
-    'return_30',
-
-    # Bollinger Bands (2)
-    'BB_upper',
-    'BB_lower',
+    # Critical Features (4)
+    'recent_high_20',
+    'distance_from_high',
+    'low_to_close_ratio',
+    'price_position_20',
+    'max_drawdown_20',
+    'downside_deviation_10',
 
     # Temporal (3)
     'month_sin',
     'month_cos',
     'is_up_day',
 
-    # ════════════════════════════════════════════════════════════════════════
-    # NEW HIGH-PERFORMING FEATURES (15 features)
-    # Sorted by Mutual Information score
-    # ════════════════════════════════════════════════════════════════════════
-
     # Volume Price Index (3) - Highest MI!
-    'PVT_cumsum',           # MI = 0.0426 ⭐⭐⭐
-    'WAD_cumsum',           # MI = 0.0381 ⭐⭐⭐
-    'MOBV',                 # MI = 0.0209 ⭐⭐
+    'PVT_cumsum',           # MI = 0.0426 ⭐️⭐️⭐️
+    'MOBV',                 # MI = 0.0209 ⭐️⭐️
 
     # Directional Movement (4)
-    'EXPMA_50',             # MI = 0.0132 ⭐
-    'MTM',                  # MI = 0.0127 ⭐
-    'BBI',                  # MI = 0.0095
-    'EXPMA_12',             # MI = 0.0095
-
-    # Pressure and Support (4)
-    'CDP_NH',               # MI = 0.0116
-    'CDP_NL',               # MI = 0.0115
-    'CDP_AH',               # MI = 0.0109
-    'CDP_AL',               # MI = 0.0107
+    'MTM',                  # MI = 0.0127 ⭐️
 
     # OverBought & OverSold (1)
     'ADTM',                 # MI = 0.0104
@@ -298,7 +264,10 @@ feature_columns = [
     'VHF',                  # MI = 0.0088
 
     # Stochastic (1)
-    'K',
+    'K',                    # MI = 0.0083
+
+    # Raw Features
+
 ]
 # Combine all required columns
 model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + target_column
@@ -332,7 +301,7 @@ print("Shape AFTER cleaning:", df_clean.shape)
 print("Rows removed:", len(df_model) - len(df_clean))
 print("Remaining NaN values:", df_clean.isna().sum().sum())
 
-path = r'C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/export/new_stocks_features_30d_target.csv'
+path = r'D:\Stock_trend_project\data\processed\new_stocks_features2.csv'
 df_model = df_features[model_cuurent_columns].dropna()
 df_model.to_csv(path, index=False, chunksize=100_000)
 print("ML dataset exported successfully")
