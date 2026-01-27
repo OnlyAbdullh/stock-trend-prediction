@@ -225,6 +225,9 @@ def engineer_features(df):
 
 # Apply feature engineering
 df_features = engineer_features(df)
+import gc
+del df
+gc.collect()
 
 print("\n✓ Feature engineering complete!")
 print(f"Total features created: 31")
@@ -280,9 +283,10 @@ feature_columns = [
 # Combine all required columns
 model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + target_column
 
-float_cols = df_features.select_dtypes(include=['float32']).columns
+float_cols = df_features.select_dtypes(include=['float64']).columns
 df_features[float_cols] = df_features[float_cols].astype(np.float32)
-df_model = df_features[model_columns].copy()
+
+df_model = df_features.loc[:, model_columns]
 print(df_model.head())
 print("Dataset shape before cleaning:", df_model.shape)
 
@@ -301,7 +305,7 @@ print("Rows removed:", len(df_model) - len(df_clean))
 print("Remaining NaN values:", df_clean.isna().sum().sum())
 
 path = r'C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/export/new_stocks_features_30d_target.csv'
-df_clean.to_csv(path, index=False, chunksize=100_000)
+df_features.loc[:, model_columns].dropna().to_csv(path, index=False, chunksize=100_000)
 print("ML dataset exported successfully")
 
 print("Total NaN values:", df_clean.isna().sum().sum())
