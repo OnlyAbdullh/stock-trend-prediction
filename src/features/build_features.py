@@ -219,7 +219,7 @@ def engineer_features(df):
     # ========================================================================
     temp_columns = ['BB_std', 'close_30d_future']
     df = df.drop(columns=temp_columns, errors='ignore')
-
+    # print(df.head())
     return df
 
 
@@ -278,9 +278,9 @@ feature_columns = [
     'is_up_day'
 ]
 # Combine all required columns
-model_columns = id_columns + ['close'] + feature_columns + target_column
+model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + target_column
 
-float_cols = df_features.select_dtypes(include=['float64']).columns
+float_cols = df_features.select_dtypes(include=['float32']).columns
 df_features[float_cols] = df_features[float_cols].astype(np.float32)
 df_model = df_features[model_columns].copy()
 print(df_model.head())
