@@ -185,63 +185,16 @@ def remove_global_gaps(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.sort_values(["ticker", "date"]).copy()
 
+    # mark dates that have missing days before them
     df["prev_date"] = df.groupby("ticker")["date"].shift(1)
     df["gap_days"] = (df["date"] - df["prev_date"]).dt.days
-
-    # gaps = df[df["gap_days"] > MAX_NORMAL_GAP].copy()
-    df["missing_days"] = df["gap_days"] - 1
-    gaps = df[df["missing_days"] >= 1].copy()
-    gap_counts = (
-        gaps.groupby("date")
-        .size()
-        .rename("gap_tickers")
-    )
-    data_counts = (
-        df.groupby("date")
-        .size()
-        .rename("total_tickers")
-    )
-    gap_vs_data = (
-        gap_counts
-        .to_frame()
-        .join(data_counts, how="left")
-        .fillna(0)
-    )
-
-    gap_vs_data["gap_ratio"] = (
-            gap_vs_data["gap_tickers"] / gap_vs_data["total_tickers"]
-    )
-    GLOBAL_THRESHOLD = 0.8
-
-    gap_vs_data["gap_type"] = np.where(
-        gap_vs_data["gap_ratio"] >= GLOBAL_THRESHOLD,
-        "global",
-        "local"
-    )
-    global_gap_dates = gap_vs_data.index[
-        gap_vs_data["gap_type"] == "global"
-        ]
-    df_no_global_gaps = df[~df["date"].isin(global_gap_dates)].copy()
-
-    local_gaps = gaps[
-        ~gaps["date"].isin(global_gap_dates)
-    ][["date", "ticker"]]
-    logging.info(
-        "Saving final cleaned data (after removing corrupted tickers) to %s",
-        Path('data/interim/local_gaps.csv')
-
-    )
-    # fill missing_days NaNs
-    df_no_global_gaps["missing_days"] = df_no_global_gaps["missing_days"].fillna(0).astype(int)
-
-    # drop helper columns
-    df_no_global_gaps = df_no_global_gaps.drop(
-        columns=["prev_date", "gap_days"],
-        errors="ignore"
-    )
-
-    return df_no_global_gaps
-
+    df["missing_days"] = (df["gap_days"] - 1).fillna(0).astype(int)
+    gap_ratio_per_date = df[df["missing_days"] >= 1].groupby("date").size() / df.groupby("date").size()
+    gap_ratio_per_date = gap_ratio_per_date.dropna()
+    global_gap_dates = gap_ratio_per_date[gap_ratio_per_date >= 0.8].index  # index is date here
+    df = df.drop(columns=['prev_date', 'gap_days'])
+    df.loc[df["date"].isin(global_gap_dates), "missing_days"] = 0
+    return df
 @click.command()
 @click.argument("input_filepath", type=click.Path(exists=True))
 def main(input_filepath: str):
