@@ -1,5 +1,3 @@
-# Stock Price Prediction - Feature Analysis for RNN Sequence Selection
-# Analyzing features to determine optimal sequence length for LSTM/GRU models
 import os
 import numpy as np
 import pandas as pd
@@ -22,7 +20,6 @@ print("="*80)
 print("\nObjective: Determine optimal sequence length for RNN input")
 print("Target: Predict if close price > current price after 30 trading days")
 print("="*80)
-
 # ============================================================================
 # SECTION 1: DATA LOADING AND INITIAL PREPROCESSING
 # ============================================================================
@@ -47,9 +44,11 @@ print(f"\nMemory usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
 print("\n" + "="*80)
 print("DATA OVERVIEW")
 print("="*80)
-# print("\nMissing values:")
-# print(df.isnull().sum())
-
+print(df.head())
+print("\nData types:")
+print(df.dtypes)
+print("\nMissing values:")
+print(df.isnull().sum())
 # ============================================================================
 # SECTION 2: FEATURE ENGINEERING
 # ============================================================================
@@ -59,79 +58,40 @@ print("="*80)
 
 def engineer_features(df):
     """
-    Create optimized features based on correlation and MI analysis
-    Total features: 35 high-quality features (after improvements)
+    Engineer features and keep only selected high-quality features
+    in the order they were originally created.
     """
     df = df.copy()
     df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
     grouped = df.groupby('ticker')
 
-    print("\nCalculating features:")
-
-    # ========================================================================
-    # PRICE FEATURES (5 features - removed intraday_return)
-    # ========================================================================
-    print("  - Price features...")
-
-    # Daily return: (close - prev_close) / prev_close
+    # ------------------------------
+    # Price Features
+    # ------------------------------
     df['daily_return'] = grouped['close'].pct_change()
-
-    # High-Low ratio: (high - low) / close
     df['high_low_ratio'] = (df['high'] - df['low']) / df['close']
 
-    # Return over 30 days
-    df['close_30d_ago'] = grouped['close'].shift(30)
-    df['return_30'] = (df['close'] - df['close_30d_ago']) / (df['close_30d_ago'] + 1e-8)
+    # ------------------------------
+    # Moving Averages
+    # ------------------------------
+    df['MA_5'] = grouped['close'].transform(lambda x: x.rolling(5, min_periods=1).mean())
+    df['MA_20'] = grouped['close'].transform(lambda x: x.rolling(20, min_periods=1).mean())
+    df['MA_60'] = grouped['close'].transform(lambda x: x.rolling(60, min_periods=1).mean())
 
-    # ========================================================================
-    # MOVING AVERAGES (3 features)
-    # ========================================================================
-    print("  - Moving averages (5, 20, 60 days)...")
-
-    df['MA_5'] = grouped['close'].transform(
-        lambda x: x.rolling(window=5, min_periods=1).mean()
-    )
-    df['MA_20'] = grouped['close'].transform(
-        lambda x: x.rolling(window=20, min_periods=1).mean()
-    )
-    df['MA_60'] = grouped['close'].transform(
-        lambda x: x.rolling(window=60, min_periods=1).mean()
-    )
-
-    # ========================================================================
-    # MA-BASED FEATURES (4 features)
-    # ========================================================================
-    print("  - MA-based features...")
-
+    # ------------------------------
+    # MA-Based Features
+    # ------------------------------
     df['price_to_MA5'] = (df['close'] - df['MA_5']) / (df['MA_5'] + 1e-8)
     df['price_to_MA20'] = (df['close'] - df['MA_20']) / (df['MA_20'] + 1e-8)
     df['price_to_MA60'] = (df['close'] - df['MA_60']) / (df['MA_60'] + 1e-8)
     df['MA_60_slope'] = grouped['MA_60'].pct_change(30)
 
-    # ========================================================================
-    # VOLATILITY FEATURES (4 features)
-    # ========================================================================
-    print("  - Volatility features...")
-
+    # ------------------------------
+    # Volatility Features
+    # ------------------------------
     df['volatility_20'] = grouped['daily_return'].transform(
-        lambda x: x.rolling(window=20, min_periods=1).std()
+        lambda x: x.rolling(20, min_periods=1).std()
     )
-
-    df['parkinson_volatility'] = grouped.apply(
-        lambda x: np.sqrt(
-            1/(4*np.log(2)) *
-            ((np.log(x['high']/(x['low']+1e-8)))**2).rolling(10, min_periods=1).mean()
-        )
-    ).reset_index(level=0, drop=True)
-
-    df['downside_deviation_10'] = grouped['daily_return'].transform(
-        lambda x: x.where(x < 0, 0).rolling(10, min_periods=1).std()
-    )
-
-    # ========================================================================
-    # TECHNICAL INDICATORS (1 feature)
-    # ========================================================================
-    print("  - Technical indicators...")
 
     def calculate_rsi(series, period=14):
         delta = series.diff()
@@ -142,25 +102,24 @@ def engineer_features(df):
 
     df['RSI_14'] = grouped['close'].transform(lambda x: calculate_rsi(x, 14))
 
-    # ========================================================================
-    # SUPPORT/RESISTANCE FEATURES (4 features)
-    # ========================================================================
-    print("  - Support/Resistance levels...")
+    df['parkinson_volatility'] = grouped.apply(
+        lambda x: np.sqrt(
+            1/(4*np.log(2)) *
+            ((np.log(x['high']/(x['low']+1e-8)))**2).rolling(10, min_periods=1).mean()
+        )
+    ).reset_index(level=0, drop=True)
 
-    df['recent_high_20'] = grouped['high'].transform(
-        lambda x: x.rolling(20, min_periods=1).max()
-    )
-    df['recent_low_20'] = grouped['low'].transform(
-        lambda x: x.rolling(20, min_periods=1).min()
-    )
-
+    # ------------------------------
+    # Support/Resistance & Risk
+    # ------------------------------
+    df['recent_high_20'] = grouped['high'].transform(lambda x: x.rolling(20, min_periods=1).max())
+    df['recent_low_20'] = grouped['low'].transform(lambda x: x.rolling(20, min_periods=1).min())
     df['distance_from_high'] = (df['close'] - df['recent_high_20']) / (df['recent_high_20'] + 1e-8)
-    df['distance_from_low'] = (df['close'] - df['recent_low_20']) / (df['recent_low_20'] + 1e-8)
-
-    # ========================================================================
-    # RISK FEATURES (1 feature)
-    # ========================================================================
-    print("  - Risk features...")
+    df['low_to_close_ratio'] = df['recent_low_20'] / (df['close'] + 1e-8)
+    df['price_position_20'] = (
+        (df['close'] - df['recent_low_20']) /
+        (df['recent_high_20'] - df['recent_low_20'] + 1e-8)
+    )
 
     def max_drawdown(series, window):
         roll_max = series.rolling(window, min_periods=1).max()
@@ -168,67 +127,87 @@ def engineer_features(df):
         return drawdown.rolling(window, min_periods=1).min()
 
     df['max_drawdown_20'] = grouped['close'].transform(lambda x: max_drawdown(x, 20))
-
-    # ========================================================================
-    # BOLLINGER BANDS (2 features)
-    # ========================================================================
-    print("  - Bollinger Bands...")
-
-    df['BB_std'] = grouped['close'].transform(
-        lambda x: x.rolling(20, min_periods=1).std()
-    )
-    df['BB_upper'] = df['MA_20'] + 2 * df['BB_std']
-    df['BB_lower'] = df['MA_20'] - 2 * df['BB_std']
-
-    # ========================================================================
-    # 🆕 NORMALIZED PRICE FEATURES (4 features)
-    # ========================================================================
-    print("  - Normalized price features...")
-
-    # Recent high/low as ratio to current price
-    df['high_to_close_ratio'] = df['recent_high_20'] / (df['close'] + 1e-8)
-    df['low_to_close_ratio'] = df['recent_low_20'] / (df['close'] + 1e-8)
-
-    # Position within 20-day range
-    df['price_position_20'] = (
-        (df['close'] - df['recent_low_20']) /
-        (df['recent_high_20'] - df['recent_low_20'] + 1e-8)
+    df['downside_deviation_10'] = grouped['daily_return'].transform(
+        lambda x: x.where(x < 0, 0).rolling(10, min_periods=1).std()
     )
 
-    # ========================================================================
-    # 🆕 IMPROVED TEMPORAL FEATURES (6 features)
-    # ========================================================================
-    print("  - Improved temporal features...")
-
-    # Cyclical encoding for month
+    # ------------------------------
+    # Temporal
+    # ------------------------------
     df['month_sin'] = np.sin(2 * np.pi * df['date'].dt.month / 12)
     df['month_cos'] = np.cos(2 * np.pi * df['date'].dt.month / 12)
-
     df['is_up_day'] = (df['daily_return'] > 0).astype(int)
 
-    # ========================================================================
-    # TARGET VARIABLE
-    # ========================================================================
-    print("  - Target variable...")
+    # ------------------------------
+    # Volume Price Index (NEW)
+    # ------------------------------
+    df['price_change'] = grouped['close'].pct_change()
+    df['PVT'] = (df['price_change'] * df['volume']).fillna(0)
+    df['PVT_cumsum'] = grouped['PVT'].transform(lambda x: x.cumsum())
 
-    df['close_30d_future'] = grouped['close'].shift(-30)
-    df['target'] = (df['close_30d_future'] > df['close']).astype(int)
+    df['MOBV_signal'] = np.where(df['price_change'] > 0, df['volume'],
+                                  np.where(df['price_change'] < 0, -df['volume'], 0))
+    df['MOBV'] = grouped['MOBV_signal'].transform(lambda x: x.cumsum())
 
-    # ========================================================================
-    # CLEANUP
-    # ========================================================================
-    temp_columns = ['BB_std', 'close_30d_future']
-    df = df.drop(columns=temp_columns, errors='ignore')
-    # print(df.head())
+    # ------------------------------
+    # Directional Movement
+    # ------------------------------
+    df['MTM'] = df['close'] - grouped['close'].shift(12)
+
+    # ------------------------------
+    # OverBought & OverSold
+    # ------------------------------
+    df['DTM'] = np.where(df['open'] <= grouped['open'].shift(1),
+                         0,
+                         np.maximum(df['high'] - df['open'], df['open'] - grouped['open'].shift(1)))
+    df['DBM'] = np.where(df['open'] >= grouped['open'].shift(1),
+                         0,
+                         np.maximum(df['open'] - df['low'], df['open'] - grouped['open'].shift(1)))
+    df['DTM_sum'] = grouped['DTM'].transform(lambda x: x.rolling(23, min_periods=1).sum())
+    df['DBM_sum'] = grouped['DBM'].transform(lambda x: x.rolling(23, min_periods=1).sum())
+    df['ADTM'] = (df['DTM_sum'] - df['DBM_sum']) / (df['DTM_sum'] + df['DBM_sum'] + 1e-8)
+
+    # ------------------------------
+    # Energy & Volatility
+    # ------------------------------
+    df['PSY'] = grouped['is_up_day'].transform(lambda x: x.rolling(12, min_periods=1).mean()) * 100
+
+    df['highest_close'] = grouped['close'].transform(lambda x: x.rolling(28, min_periods=1).max())
+    df['lowest_close'] = grouped['close'].transform(lambda x: x.rolling(28, min_periods=1).min())
+    df['close_diff_sum'] = grouped['close'].transform(lambda x: x.diff().abs().rolling(28, min_periods=1).sum())
+    df['VHF'] = (df['highest_close'] - df['lowest_close']) / (df['close_diff_sum'] + 1e-8)
+
+    # ------------------------------
+    # Stochastic
+    # ------------------------------
+    df['lowest_low_9'] = grouped['low'].transform(lambda x: x.rolling(9, min_periods=1).min())
+    df['highest_high_9'] = grouped['high'].transform(lambda x: x.rolling(9, min_periods=1).max())
+    df['K'] = ((df['close'] - df['lowest_low_9']) / (df['highest_high_9'] - df['lowest_low_9'] + 1e-8)) * 100
+
+    # ------------------------------
+    # Cleanup temporary columns 41 - 16 = 26
+    # ------------------------------
+    temp_cols = [
+        # 'MA_5', 'MA_20', 'MA_60',
+        'price_change', 'PVT', 'MOBV_signal',
+        'DTM', 'DBM', 'DTM_sum', 'DBM_sum',
+        'highest_close', 'lowest_close', 'close_diff_sum',
+        'lowest_low_9', 'highest_high_9',
+        # 'recent_low_20',
+    ]
+    df = df.drop(columns=temp_cols, errors='ignore')
+    # df = df[ ['ticker', 'date'] + feature_columns_order ]
+
     return df
 
 
 # Apply feature engineering
 df_features = engineer_features(df)
+
 import gc
 del df
 gc.collect()
-
+#
 print("\n✓ Feature engineering complete!")
 print(f"Total features created: 31")
 # print(f"Rows with complete features: {df_features.dropna().shape[0]:,}")
@@ -242,43 +221,84 @@ target_column = ['target']
 
 # Final feature list (28 features)
 feature_columns = [
+
+    # Critical Features (4)
     'max_drawdown_20',
     'recent_high_20',
     'recent_low_20',
     'downside_deviation_10',
 
+    # Normalized Price (3)
     'high_to_close_ratio',
     'low_to_close_ratio',
     'price_position_20',
 
+    # Price Position (3)
     'distance_from_high',
     'distance_from_low',
     'close_30d_ago',
 
+    # Moving Averages (3)
     'MA_5',
     'MA_20',
     'MA_60',
 
+    # MA-Based (4)
     'price_to_MA5',
     'price_to_MA20',
     'price_to_MA60',
     'MA_60_slope',
 
+    # Volatility (3)
     'volatility_20',
     'RSI_14',
     'parkinson_volatility',
 
+    # Price Features (3)
     'daily_return',
     'high_low_ratio',
     'return_30',
 
+    # Bollinger Bands (2)
     'BB_upper',
     'BB_lower',
 
+    # Temporal (3)
     'month_sin',
     'month_cos',
+    'is_up_day',
 
-    'is_up_day'
+    # ════════════════════════════════════════════════════════════════════════
+    # NEW HIGH-PERFORMING FEATURES (15 features)
+    # Sorted by Mutual Information score
+    # ════════════════════════════════════════════════════════════════════════
+
+    # Volume Price Index (3) - Highest MI!
+    'PVT_cumsum',           # MI = 0.0426 ⭐⭐⭐
+    'WAD_cumsum',           # MI = 0.0381 ⭐⭐⭐
+    'MOBV',                 # MI = 0.0209 ⭐⭐
+
+    # Directional Movement (4)
+    'EXPMA_50',             # MI = 0.0132 ⭐
+    'MTM',                  # MI = 0.0127 ⭐
+    'BBI',                  # MI = 0.0095
+    'EXPMA_12',             # MI = 0.0095
+
+    # Pressure and Support (4)
+    'CDP_NH',               # MI = 0.0116
+    'CDP_NL',               # MI = 0.0115
+    'CDP_AH',               # MI = 0.0109
+    'CDP_AL',               # MI = 0.0107
+
+    # OverBought & OverSold (1)
+    'ADTM',                 # MI = 0.0104
+
+    # Energy & Volatility (2)
+    'PSY',                  # MI = 0.0085
+    'VHF',                  # MI = 0.0088
+
+    # Stochastic (1)
+    'K',
 ]
 # Combine all required columns
 model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + target_column
@@ -286,10 +306,18 @@ model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + tar
 float_cols = df_features.select_dtypes(include=['float64']).columns
 df_features[float_cols] = df_features[float_cols].astype(np.float32)
 
-df_model = df_features.loc[:, model_columns]
+
+print("Actual columns:", df_features.columns.tolist())
+model_cuurent_columns = [c for c in feature_columns if c in df_features.columns]
+df_model = df_features.loc[:, model_cuurent_columns]
 print(df_model.head())
 print("Dataset shape before cleaning:", df_model.shape)
+existing_cols = df_features.columns.tolist()
 
+# Keep only valid columns
+model_cuurent_columns = [c for c in model_cuurent_columns if c in existing_cols]
+
+print(f"Final model columns ({len(model_cuurent_columns)}): {model_cuurent_columns}")
 print("Shape BEFORE cleaning:", df_model.shape)
 
 nan_rows = df_model.isna().any(axis=1).sum()
@@ -305,7 +333,8 @@ print("Rows removed:", len(df_model) - len(df_clean))
 print("Remaining NaN values:", df_clean.isna().sum().sum())
 
 path = r'C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/export/new_stocks_features_30d_target.csv'
-df_features.loc[:, model_columns].dropna().to_csv(path, index=False, chunksize=100_000)
+df_model = df_features[model_cuurent_columns].dropna()
+df_model.to_csv(path, index=False, chunksize=100_000)
 print("ML dataset exported successfully")
 
 print("Total NaN values:", df_clean.isna().sum().sum())
