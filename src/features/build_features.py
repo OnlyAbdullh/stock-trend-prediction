@@ -278,11 +278,12 @@ feature_columns = [
     'is_up_day'
 ]
 # Combine all required columns
-model_columns = id_columns + feature_columns + target_column
+model_columns = id_columns + ['close'] + feature_columns + target_column
+
 float_cols = df_features.select_dtypes(include=['float64']).columns
 df_features[float_cols] = df_features[float_cols].astype(np.float32)
 df_model = df_features[model_columns].copy()
-
+print(df_model.head())
 print("Dataset shape before cleaning:", df_model.shape)
 
 print("Shape BEFORE cleaning:", df_model.shape)
