@@ -33,7 +33,7 @@ SECOND_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=False,
     dropout=0.25,
-    batch_size=128,
+    batch_size=256,
     learning_rate=1e-3,
     window_size=45,
 )
@@ -44,7 +44,7 @@ THIRD_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.3,
-    batch_size=128,
+    batch_size=256,
     learning_rate=8e-4,
     window_size=45,
 )
@@ -55,7 +55,7 @@ FOURTH_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.3,
-    batch_size=64,
+    batch_size=256,
     learning_rate=5e-4,
     window_size=60,
 )
@@ -66,7 +66,7 @@ FIFTH_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.3,
-    batch_size=64,
+    batch_size=256,
     learning_rate=5e-4,
     window_size=60,
 )
@@ -77,7 +77,7 @@ SIXTH_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.35,
-    batch_size=96,
+    batch_size=256,
     learning_rate=8e-4,
     window_size=60,
 )
@@ -88,7 +88,7 @@ SEVENTH_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.3,
-    batch_size=48,
+    batch_size=256,
     learning_rate=5e-4,
     window_size=90,
 )
@@ -99,7 +99,7 @@ EIGHTH_CONFIG = TrainingConfig(
     num_layers=3,
     bidirectional=True,
     dropout=0.35,
-    batch_size=64,
+    batch_size=256,
     learning_rate=3e-4,
     window_size=60,
 )
