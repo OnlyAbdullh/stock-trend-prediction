@@ -20,10 +20,11 @@ from src.configs.training_config import *
 # from src.models.transformer_model import TemporalTransformer
 
  
-CFG = FIRST_CONFIG
+CFG = ALAA_CONFIG_3
 MODE = "train"
 CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
-NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
+NORMALIZATION_MODE = "norm2" #  norm1 , norm2 , norm3 , norm4 , norm5
+NUMBER_EPOCHS = 5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
@@ -286,7 +287,7 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=5,
+            num_epochs=NUMBER_EPOCHS,
             cfg=cfg,
             optimizer=optimizer,
             history=history_old,
