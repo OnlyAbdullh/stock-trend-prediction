@@ -7,10 +7,10 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-
+import pandas as pd
 from src.data.make_torch_datasets import (
-    build_samples,
-    split_samples_time_based,
+    split_dataframe_by_date,
+    build_samples_from_df,
     normalize_ticker_data,
 )
 from src.data.stock_dataset import StockDataset
@@ -23,7 +23,7 @@ from src.configs.training_config import *
 CFG = ALAA_CONFIG_3
 MODE = "train"
 CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
-NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
+NORMALIZATION_MODE = "norm2" #  norm1 , norm2 , norm3 , norm4 , norm5
 NUMBER_EPOCHS = 5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -179,21 +179,61 @@ def train_loop(
 
     return model, history
 
-
-def build_data(cfg: TrainingConfig):
-    samples, tickers_data = build_samples(window_size=cfg.window_size)
-    train_s, val_s, test_s = split_samples_time_based(samples)
-    tickers_data = normalize_ticker_data(tickers_data, train_s, NORMALIZATION_MODE)
-
+def build_data(cfg):  
+      
+    df = pd.read_csv('data/processed/data.csv')
+    df['date'] = pd.to_datetime(df['date']) 
+     
+    train_df, val_df, test_df = split_dataframe_by_date(
+        df, train_ratio=0.7, val_ratio=0.15
+    )
+    
+    del df  
+    import gc
+    gc.collect()
+    
+    train_samples, train_ticker_data = build_samples_from_df(
+        train_df, window_size=cfg.window_size, horizon=30
+    )
+     
+    val_samples, val_ticker_data = build_samples_from_df(
+        val_df, window_size=cfg.window_size, horizon=30
+    ) 
+    
+    test_samples, test_ticker_data = build_samples_from_df(
+        test_df, window_size=cfg.window_size, horizon=30
+    ) 
+    
+    train_ticker_data = normalize_ticker_data(
+        train_ticker_data, train_samples, NORMALIZATION_MODE
+    )
+     
+    val_ticker_data = normalize_ticker_data(
+        val_ticker_data, train_samples, NORMALIZATION_MODE
+    )
+     
+    test_ticker_data = normalize_ticker_data(
+        test_ticker_data, train_samples, NORMALIZATION_MODE
+    )
+     
     train_ds = StockDataset(
-        train_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
+        train_samples, 
+        window_size=cfg.window_size, 
+        horizon=30, 
+        ticker_data=train_ticker_data
     )
     val_ds = StockDataset(
-        val_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
+        val_samples, 
+        window_size=cfg.window_size, 
+        horizon=30, 
+        ticker_data=val_ticker_data
     )
     test_ds = StockDataset(
-        test_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
-    )
+        test_samples, 
+        window_size=cfg.window_size, 
+        horizon=30, 
+        ticker_data=test_ticker_data
+    )  
     workers = 4
     train_loader = DataLoader(
         train_ds,
@@ -218,11 +258,9 @@ def build_data(cfg: TrainingConfig):
         num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
-    )
-
+    )   
     X_batch, y_batch = next(iter(train_loader))
     input_size = X_batch.shape[2]
-
     return train_loader, val_loader, test_loader, input_size
  
 def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
