@@ -219,6 +219,20 @@ def build_data(cfg: TrainingConfig):
     input_size = X_batch.shape[2]
 
     return train_loader, val_loader, test_loader, input_size
+ 
+def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
+    mt = cfg.model_type.lower()
+
+    if mt == "gru":
+        return GRUModel(
+            input_size=input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            bidirectional=cfg.bidirectional,
+        ) 
+    else:
+        raise ValueError(f"Unknown model_type: {cfg.model_type}")
 
 if __name__ == "__main__":
     torch.manual_seed(42)
@@ -227,13 +241,7 @@ if __name__ == "__main__":
         cfg = CFG
         train_loader, val_loader, test_loader, input_size = build_data(cfg)
 
-        model = GRUModel(
-            input_size=input_size,
-            hidden_size=cfg.hidden_size,
-            num_layers=cfg.num_layers,
-            dropout=cfg.dropout,
-            bidirectional=cfg.bidirectional,
-        )
+        model = build_model_from_config(input_size, cfg)
         print("Starting training from scratch...")
         model, history = train_loop(
             model=model,
@@ -253,13 +261,7 @@ if __name__ == "__main__":
 
         train_loader, val_loader, test_loader, input_size = build_data(cfg)
 
-        model = GRUModel(
-            input_size=input_size,
-            hidden_size=cfg.hidden_size,
-            num_layers=cfg.num_layers,
-            dropout=cfg.dropout,
-            bidirectional=cfg.bidirectional,
-        )
+        model = build_model_from_config(input_size, cfg)
         model.load_state_dict(ckpt["model_state_dict"])
         model.to(device)
 

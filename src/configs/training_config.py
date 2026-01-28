@@ -3,22 +3,31 @@
 from dataclasses import dataclass
 from os import name
  
+from dataclasses import dataclass
+
 @dataclass
 class TrainingConfig:
     name: str = "default"
     window_size: int = 60
+
+    # Model
+    model_type: str = "gru"   
     hidden_size: int = 32
     num_layers: int = 2
     bidirectional: bool = False
     dropout: float = 0.4
+
+    # Training
     batch_size: int = 64
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
-    optimizer: str = 'Adam'
+    optimizer: str = "Adam"
+
 
  
 FIRST_CONFIG = TrainingConfig(
     name="first",
+    model_type="gru",
     hidden_size=64,
     num_layers=2,
     bidirectional=True,
@@ -30,6 +39,7 @@ FIRST_CONFIG = TrainingConfig(
 
 SECOND_CONFIG = TrainingConfig(
     name="second",
+    model_type="gru",
     hidden_size=96,
     num_layers=2,
     bidirectional=False,
@@ -54,6 +64,7 @@ without L2
 """
 THIRD_CONFIG = TrainingConfig(
     name="third",
+    model_type="gru",
     hidden_size=64,
     num_layers=2,
     bidirectional=True,
@@ -80,17 +91,19 @@ THIRD_CONFIG = TrainingConfig(
 # Epoch 005 | train_loss=0.6147  train_acc=0.6506  val_loss=0.7792  val_acc=0.4833
 FOURTH_CONFIG = TrainingConfig(
     name="fourth",
-    hidden_size=96,
+    model_type="gru",
+    hidden_size=96, # => 32
     num_layers=2,
-    bidirectional=True,
+    bidirectional=True, # => False
     dropout=0.3,
     batch_size=256,
     learning_rate=5e-4,
-    window_size=60,
+    window_size=60, # => 30
 )
 
 FIFTH_CONFIG = TrainingConfig(
     name="fifth",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -102,6 +115,7 @@ FIFTH_CONFIG = TrainingConfig(
 
 SIXTH_CONFIG = TrainingConfig(
     name="sixth",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -113,6 +127,7 @@ SIXTH_CONFIG = TrainingConfig(
 
 SEVENTH_CONFIG = TrainingConfig(
     name="seventh",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -124,6 +139,7 @@ SEVENTH_CONFIG = TrainingConfig(
 
 EIGHTH_CONFIG = TrainingConfig(
     name="eighth",
+    model_type="gru",
     hidden_size=96,
     num_layers=3,
     bidirectional=True,
@@ -135,6 +151,7 @@ EIGHTH_CONFIG = TrainingConfig(
 
 NINTH_CONFIG = TrainingConfig(
     name="ninth",
+    model_type="gru",
     hidden_size=192,
     num_layers=2,
     bidirectional=True,
@@ -178,6 +195,7 @@ NINTH_CONFIG = TrainingConfig(
 
 TENTH_CONFIG = TrainingConfig(
     name="tenth",
+    model_type="gru",
     hidden_size=160,
     num_layers=3,
     bidirectional=True,
@@ -219,6 +237,7 @@ ALL_CONFIGS = {
 }
 CONFIG_ONLY1 = TrainingConfig(
     name="only1",
+    model_type="gru",
     hidden_size=32,
     num_layers=2,
     bidirectional=False,
@@ -236,6 +255,7 @@ with L2"""
 
 CONFIG_ONLY2 = TrainingConfig(
     name="only2",
+    model_type="gru",
     hidden_size=25,
     num_layers=2,
     bidirectional=False,
@@ -245,3 +265,37 @@ CONFIG_ONLY2 = TrainingConfig(
     window_size=45,
     weight_decay=1e-5,
 )
+
+# AYDI_1_config:
+SEVENTH_CONFIG = TrainingConfig(
+    name="seventh",
+    hidden_size=18,
+    num_layers=1,
+    bidirectional=False,
+    dropout=0.3,
+    batch_size=256,
+    learning_rate=5e-4,
+    window_size=90,
+)
+# # Results of AYDI 1 CONFIG:
+# train: 100%|████████████████████████████████████| 29747/29747 [08:06<00:00, 61.18it/s, loss=0.6885]
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:21<00:00, 78.27it/s, loss=0.7078]
+# Epoch 001 | train_loss=0.6717  train_acc=0.5825  val_loss=0.7290  val_acc=0.4726
+# train: 100%|████████████████████████████████████| 29747/29747 [07:40<00:00, 64.59it/s, loss=0.6513]
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:20<00:00, 79.64it/s, loss=0.6836]
+# Epoch 002 | train_loss=0.6608  train_acc=0.5963  val_loss=0.7317  val_acc=0.4817
+# train: 100%|████████████████████████████████████| 29747/29747 [07:12<00:00, 68.82it/s, loss=0.6506]
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:21<00:00, 78.33it/s, loss=0.6770]
+# Epoch 003 | train_loss=0.6556  train_acc=0.6030  val_loss=0.7366  val_acc=0.4589
+# train: 100%|████████████████████████████████████| 29747/29747 [08:21<00:00, 59.29it/s, loss=0.6657] 
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:20<00:00, 78.83it/s, loss=0.6601]
+# Epoch 004 | train_loss=0.6521  train_acc=0.6078  val_loss=0.7346  val_acc=0.4775
+# train: 100%|████████████████████████████████████| 29747/29747 [07:32<00:00, 65.73it/s, loss=0.6482] 
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:10<00:00, 90.38it/s, loss=0.6876]
+# Epoch 005 | train_loss=0.6494  train_acc=0.6116  val_loss=0.7463  val_acc=0.4720
+# train: 100%|████████████████████████████████████| 29747/29747 [07:00<00:00, 70.69it/s, loss=0.6558] 
+# val: 100%|███████████████████████████████████████| 6375/6375 [01:03<00:00, 100.40it/s, loss=0.6999]
+# Epoch 006 | train_loss=0.6473  train_acc=0.6144  val_loss=0.7545  val_acc=0.4627
+# train: 100%|████████████████████████████████████| 29747/29747 [07:39<00:00, 64.77it/s, loss=0.6640] 
+# val: 100%|████████████████████████████████████████| 6375/6375 [01:28<00:00, 72.07it/s, loss=0.6811]
+# Epoch 007 | train_loss=0.6456  train_acc=0.6162  val_loss=0.7400  val_acc=0.4671
