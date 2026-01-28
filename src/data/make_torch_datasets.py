@@ -182,9 +182,7 @@ def normalize_ticker_data_mode1(ticker_data, train_samples):
     """Normalize features: fit on train, transform on all"""
 
     robust_cols = [mp[c] for c in robust_scaling_features]
-
     zscore_cols = [mp[c] for c in zscore_features]
-
     standard_cols = [mp[c] for c in standard_scaler_features]
 
     print("Collecting training data for normalization...")
