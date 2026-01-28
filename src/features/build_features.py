@@ -313,3 +313,20 @@ print("Rows containing NaN:", nan_rows)
 
 print("Total rows:", len(df_clean))
 print("NaN row percentage:", nan_rows / len(df_clean) * 100)
+
+
+
+
+numeric_df = df_clean.select_dtypes(include=[np.number])
+
+total_inf = np.isinf(numeric_df).sum().sum()
+print("Total INF values:", total_inf)
+
+inf_rows = np.isinf(numeric_df).any(axis=1).sum()
+print("Rows containing INF:", inf_rows)
+
+inf_per_col = np.isinf(numeric_df).sum().sort_values(ascending=False)
+print(inf_per_col)
+
+inf_percent = (inf_rows / len(df_clean)) * 100
+print(f"Percentage of dataset containing INF rows: {inf_percent:.2f}%")
