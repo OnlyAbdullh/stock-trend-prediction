@@ -15,11 +15,13 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel  
+
+from src.configs.training_config import *
+
 CFG = CONFIG_ONLY2
 MODE = "train"            
 CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
 
-from src.configs.training_config import *
   
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
