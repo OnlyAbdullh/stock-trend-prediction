@@ -4,31 +4,12 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+from temp.train_model import GRUClassifier
 
 # ============================================================
 # MODEL DEFINITION (must match training!)
 # ============================================================
-class GRUClassifier(nn.Module):
-    def __init__(self, num_features, hidden_size=256, num_layers=2):
-        super().__init__()
-        self.gru = nn.GRU(
-            input_size=num_features,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=0.2 if num_layers > 1 else 0
-        )
-        self.fc1 = nn.Linear(hidden_size, 128)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(128, 1)
 
-    def forward(self, x):
-        _, h = self.gru(x)
-        x = self.fc1(h[-1])
-        x = self.relu(x)
-        x = self.dropout(x)
-        return self.fc2(x).squeeze(1)
 
 
 # ============================================================

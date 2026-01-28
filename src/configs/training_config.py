@@ -9,7 +9,7 @@ class TrainingConfig:
     window_size: int = 60
     hidden_size: int = 128
     num_layers: int = 2
-    bidirectional: bool = False
+    bidirectional: bool = True
     dropout: float = 0.3
     batch_size: int = 64
     learning_rate: float = 1e-3
@@ -20,7 +20,7 @@ FIRST_CONFIG = TrainingConfig(
     name="first",
     hidden_size=64,
     num_layers=2,
-    bidirectional=False,
+    bidirectional=True,
     dropout=0.2,
     batch_size=256,
     learning_rate=2e-3,
@@ -37,7 +37,19 @@ SECOND_CONFIG = TrainingConfig(
     learning_rate=1e-3,
     window_size=45,
 )
-
+"""
+2
+Epoch 001 | train_loss=0.6568  train_acc=0.6007  val_loss=0.7423  val_acc=0.4830
+Epoch 002 | train_loss=0.6302  train_acc=0.6335  val_loss=0.7709  val_acc=0.4910
+Epoch 003 | train_loss=0.6199  train_acc=0.6449  val_loss=0.7516  val_acc=0.5035
+Epoch 004 | train_loss=0.6141  train_acc=0.6508  val_loss=0.7681  val_acc=0.4857
+Epoch 005 | train_loss=0.6103  train_acc=0.6549  val_loss=0.7619  val_acc=0.5026
+Epoch 006 | train_loss=0.6077  train_acc=0.6573  val_loss=0.7786  val_acc=0.4839
+Epoch 007 | train_loss=0.6058  train_acc=0.6594  val_loss=0.7575  val_acc=0.4982
+Epoch 008 | train_loss=0.6046  train_acc=0.6607  val_loss=0.7671  val_acc=0.4898
+Epoch 009 | train_loss=0.6037  train_acc=0.6613  val_loss=0.7552  val_acc=0.4974
+Epoch 010 | train_loss=0.6028  train_acc=0.6626  val_loss=0.7800  val_acc=0.5015
+"""
 THIRD_CONFIG = TrainingConfig(
     name="third",
     hidden_size=64,
@@ -48,7 +60,22 @@ THIRD_CONFIG = TrainingConfig(
     learning_rate=8e-4,
     window_size=45,
 )
-
+#Without l2
+# 100%|█████████████████████████████████████████████████████████████| 61103/61103 [31:57<00:00, 31.87it/s, loss=0.6268] 
+# 100%|████████████████████████████████████████████████████████████| 13094/13094 [02:10<00:00, 100.71it/s, loss=0.7539] 
+# Epoch 001 | train_loss=0.6583  train_acc=0.5985  val_loss=0.7395  val_acc=0.4875
+# 100%|█████████████████████████████████████████████████████████████| 61103/61103 [24:00<00:00, 42.42it/s, loss=0.6337] 
+# 100%|█████████████████████████████████████████████████████████████| 13094/13094 [02:24<00:00, 90.57it/s, loss=0.7497] 
+# Epoch 002 | train_loss=0.6329  train_acc=0.6306  val_loss=0.7946  val_acc=0.4751
+# 100%|█████████████████████████████████████████████████████████████| 61103/61103 [20:14<00:00, 50.33it/s, loss=0.6157] 
+# 100%|████████████████████████████████████████████████████████████| 13094/13094 [01:49<00:00, 119.91it/s, loss=0.7211] 
+# Epoch 003 | train_loss=0.6231  train_acc=0.6417  val_loss=0.7705  val_acc=0.4784
+# 100%|█████████████████████████████████████████████████████████████| 61103/61103 [25:03<00:00, 40.64it/s, loss=0.6536] 
+# 100%|████████████████████████████████████████████████████████████| 13094/13094 [02:07<00:00, 102.43it/s, loss=0.7544] 
+# Epoch 004 | train_loss=0.6177  train_acc=0.6474  val_loss=0.7744  val_acc=0.4874
+# 100%|█████████████████████████████████████████████████████████████| 61103/61103 [21:32<00:00, 47.28it/s, loss=0.5601] 
+# 100%|████████████████████████████████████████████████████████████| 13094/13094 [02:05<00:00, 104.31it/s, loss=0.7784]
+# Epoch 005 | train_loss=0.6147  train_acc=0.6506  val_loss=0.7792  val_acc=0.4833
 FOURTH_CONFIG = TrainingConfig(
     name="fourth",
     hidden_size=96,
@@ -177,3 +204,13 @@ ALL_CONFIGS = {
     'config_09': NINTH_CONFIG,
     'config_10': TENTH_CONFIG,
 }
+CONFIG_ONLY1 = TrainingConfig(
+    name="only1",
+    hidden_size=64,
+    num_layers=1,
+    bidirectional=False,
+    dropout=0.3,
+    batch_size=256,
+    learning_rate=5e-4,
+    window_size=45,
+)
