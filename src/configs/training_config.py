@@ -49,6 +49,7 @@ Epoch 007 | train_loss=0.6058  train_acc=0.6594  val_loss=0.7575  val_acc=0.4982
 Epoch 008 | train_loss=0.6046  train_acc=0.6607  val_loss=0.7671  val_acc=0.4898
 Epoch 009 | train_loss=0.6037  train_acc=0.6613  val_loss=0.7552  val_acc=0.4974
 Epoch 010 | train_loss=0.6028  train_acc=0.6626  val_loss=0.7800  val_acc=0.5015
+بدون L2
 """
 THIRD_CONFIG = TrainingConfig(
     name="third",
@@ -206,10 +207,10 @@ ALL_CONFIGS = {
 }
 CONFIG_ONLY1 = TrainingConfig(
     name="only1",
-    hidden_size=64,
-    num_layers=1,
+    hidden_size=32,
+    num_layers=2,
     bidirectional=False,
-    dropout=0.3,
+    dropout=0.4,
     batch_size=256,
     learning_rate=5e-4,
     window_size=45,
