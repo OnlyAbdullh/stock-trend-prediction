@@ -13,6 +13,7 @@ torch.manual_seed(42)
 random.seed(42)
 from tqdm import tqdm
 import pandas as pd
+mp = {}
 def build_samples(window_size = 60):
     
     print("Loading CSV...")
@@ -20,54 +21,57 @@ def build_samples(window_size = 60):
     ticker_data = {}
     samples = []
     horizon = 30
+
     FEATURE_COLS = [
     # Price Features (3)
-    'daily_return',
-    'high_low_ratio',
+    'daily_return',#0
+    'high_low_ratio',# 1
 
     # MA-Based (4)
-    'price_to_MA5',
-    'price_to_MA20',
-    'price_to_MA60',
-    'MA_60_slope',
+    'price_to_MA5',# 2 
+    'price_to_MA20',# 3
+    'price_to_MA60',# 4
+    'MA_60_slope',# 5
 
     # Volatility (3)
-    'volatility_20',
-    'RSI_14',
-    'parkinson_volatility',
+    'volatility_20',# 6
+    'RSI_14',# 7
+    'parkinson_volatility',# 8
 
     # Critical Features (4)
-    'recent_high_20',
-    'distance_from_high',
-    'low_to_close_ratio',
-    'price_position_20',
-    'max_drawdown_20',
-    'downside_deviation_10',
+    'recent_high_20',#9
+    'distance_from_high',#10
+    'low_to_close_ratio',#11
+    'price_position_20',#12
+    'max_drawdown_20',#13
+    'downside_deviation_10',# 14
 
     # Temporal (3)
-    'month_sin',
-    'month_cos',
-    'is_up_day',
+    'month_sin',#15
+    'month_cos',#16
+    'is_up_day',#17
 
     # Volume Price Index (3) - Highest MI!
-    'PVT_cumsum',           # MI = 0.0426 ⭐️⭐️⭐️
-    'MOBV',                 # MI = 0.0209 ⭐️⭐️
+    'PVT_cumsum',   #18        # MI = 0.0426 ⭐️⭐️⭐️
+    'MOBV',            #19     # MI = 0.0209 ⭐️⭐️
 
     # Directional Movement (4)
-    'MTM',                  # MI = 0.0127 ⭐️
+    'MTM',            #20      # MI = 0.0127 ⭐️
 
     # OverBought & OverSold (1)
-    'ADTM',                 # MI = 0.0104
+    'ADTM',      #21           # MI = 0.0104
 
     # Energy & Volatility (2)
-    'PSY',                  # MI = 0.0085
-    'VHF',                  # MI = 0.0088
+    'PSY',          #22        # MI = 0.0085
+    'VHF',          #23        # MI = 0.0088
 
     # Stochastic (1)
-    'K',                    # MI = 0.0083
+    'K',               #24     # MI = 0.0083
 
     # Raw Features
     ]
+    for i,col in enumerate(FEATURE_COLS):
+        mp[col] = i
     for ticker, group in tqdm(df.groupby('ticker'), desc="Processing tickers"):
         group = group.sort_values('date').reset_index(drop=True)
         n = len(group)
@@ -127,10 +131,43 @@ def normalize_ticker_data(ticker_data, train_samples):
     """Normalize features: fit on train, transform on all"""
 
     # Feature groups
-    no_scale = ['is_up_day', 'month_sin', 'month_cos', 'price_position_20']
-    robust_cols = [0, 1, 8, 9, 10, 11, 12, 13, 18, 19, 20]  # Indices of robust features
-    zscore_cols = [2, 3, 4, 5, 6, 7, 14, 15, 16, 17]  # Indices of zscore features
-    standard_cols = [21]  # Index of K
+    no_scale = [mp[c] for c in [
+        'is_up_day',
+        'month_sin',
+        'month_cos',
+        'price_position_20',
+    ]]
+
+    robust_cols = [mp[c] for c in [
+        'distance_from_high',
+        'downside_deviation_10',
+        'high_low_ratio',
+        'low_to_close_ratio',
+        'max_drawdown_20',
+        'parkinson_volatility',
+        'recent_high_20',
+        'volatility_20',
+        'VHF',
+        'MOBV',
+        'PVT_cumsum',
+    ]]
+
+    zscore_cols = [mp[c] for c in [
+        'ADTM',
+        'daily_return',
+        'MA_60_slope',
+        'MTM',
+        'price_to_MA5',
+        'price_to_MA20',
+        'price_to_MA60',
+        'PSY',
+        'RSI_14',
+    ]]
+
+    standard_cols = [mp[c] for c in [
+        'K',
+    ]]
+
 
     print("Collecting training data for normalization...")
     train_data = []
