@@ -26,7 +26,7 @@ print("="*80)
 
 print("\n[1] LOADING DATA...")
 # Load the dataset
-df = pd.read_csv('D:/Development/PycharmProjects/stock-trend-prediction/data/interim/train_clean_after_2010_and_bad_tickers.csv')
+df = pd.read_csv('C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/interim/train_clean_after_2010_and_bad_tickers.csv')
 
 # Convert date to datetime
 df['date'] = pd.to_datetime(df['date'])
@@ -299,9 +299,9 @@ df_clean = df_model.dropna().reset_index(drop=True)
 
 print("Shape AFTER cleaning:", df_clean.shape)
 print("Rows removed:", len(df_model) - len(df_clean))
-print("Remaining NaN values:", df_clean.isna().sum().sum())
+# print("Remaining NaN values:", df_clean.isna().sum().sum())
 
-path = r'D:/Development/PycharmProjects/stock-trend-prediction/data/processed/data.csv'
+path = r'C:/Users/LENOVO/Desktop/NN project/stock-trend-prediction/data/processed/data.csv'
 df_model = df_features[model_cuurent_columns].dropna()
 df_model.to_csv(path, index=False, chunksize=100_000)
 print("ML dataset exported successfully")
@@ -313,3 +313,20 @@ print("Rows containing NaN:", nan_rows)
 
 print("Total rows:", len(df_clean))
 print("NaN row percentage:", nan_rows / len(df_clean) * 100)
+
+
+
+
+numeric_df = df_clean.select_dtypes(include=[np.number])
+
+total_inf = np.isinf(numeric_df).sum().sum()
+print("Total INF values:", total_inf)
+
+inf_rows = np.isinf(numeric_df).any(axis=1).sum()
+print("Rows containing INF:", inf_rows)
+
+inf_per_col = np.isinf(numeric_df).sum().sort_values(ascending=False)
+print(inf_per_col)
+
+inf_percent = (inf_rows / len(df_clean)) * 100
+print(f"Percentage of dataset containing INF rows: {inf_percent:.2f}%")
