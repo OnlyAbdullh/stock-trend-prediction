@@ -26,7 +26,7 @@ print("="*80)
 
 print("\n[1] LOADING DATA...")
 # Load the dataset
-df = pd.read_csv(r'D:\Stock_trend_project\data\interim\train_clean_after_2010_and_bad_tickers.csv')
+df = pd.read_csv('data/interim/train_clean_after_2010_and_bad_tickers.csv')
 
 # Convert date to datetime
 df['date'] = pd.to_datetime(df['date'])
@@ -301,7 +301,7 @@ print("Shape AFTER cleaning:", df_clean.shape)
 print("Rows removed:", len(df_model) - len(df_clean))
 print("Remaining NaN values:", df_clean.isna().sum().sum())
 
-path = r'D:\Stock_trend_project\data\processed\new_stocks_features2.csv'
+path = r'data/processed/data.csv'
 df_model = df_features[model_cuurent_columns].dropna()
 df_model.to_csv(path, index=False, chunksize=100_000)
 print("ML dataset exported successfully")

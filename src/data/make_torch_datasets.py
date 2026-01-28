@@ -1,21 +1,22 @@
+import json
 import random
-
+from pathlib import Path
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from typing import List, Tuple
 
 from src.data.stock_dataset import StockDataset
+from sklearn.preprocessing import RobustScaler, StandardScaler
 
 np.random.seed(42)
 torch.manual_seed(42)
 random.seed(42)
 from tqdm import tqdm
 import pandas as pd
-def build_samples(window_size = 60):
+def build_samples(window_size = 60,use_cache = True):
+    
     print("Loading CSV...")
-    df = pd.read_csv('D:\Stock_trend_project\data\processed\\new_stocks_features2.csv')
-
+    df = pd.read_csv('data/processed/data.csv')
     ticker_data = {}
     samples = []
     horizon = 30
@@ -96,9 +97,11 @@ def build_samples(window_size = 60):
 
             date = dates[i]
             samples.append((ticker, i, label, date))
+
+
     StockDataset.ticker_data = ticker_data
     print(f"✓ Processed {len(samples):,} samples from {len(ticker_data)} tickers")
-    return samples
+    return samples, ticker_data
 
 
 def split_samples_time_based(
@@ -116,3 +119,42 @@ def split_samples_time_based(
     val_samples = samples_sorted[n_train:n_train + n_val]
     test_samples = samples_sorted[n_train + n_val:]
     return train_samples, val_samples, test_samples
+
+
+def normalize_ticker_data(ticker_data, train_samples):
+    """Normalize features: fit on train, transform on all"""
+
+    # Feature groups
+    no_scale = ['is_up_day', 'month_sin', 'month_cos', 'price_position_20']
+    robust_cols = [0, 1, 8, 9, 10, 11, 12, 13, 18, 19, 20]  # Indices of robust features
+    zscore_cols = [2, 3, 4, 5, 6, 7, 14, 15, 16, 17]  # Indices of zscore features
+    standard_cols = [21]  # Index of K
+
+    print("Collecting training data for normalization...")
+    train_data = []
+    for ticker, i, _, _ in train_samples:
+        train_data.append(ticker_data[ticker][i])
+    train_data = np.array(train_data)
+
+    print("Fitting scalers on training data...")
+    robust_scaler = RobustScaler()
+    zscore_scaler = StandardScaler()
+    standard_scaler = StandardScaler()
+
+    robust_scaler.fit(train_data[:, robust_cols])
+    zscore_scaler.fit(train_data[:, zscore_cols])
+    standard_scaler.fit(train_data[:, standard_cols])
+
+    print("Normalizing all ticker data...")
+    normalized_ticker_data = {}
+    for ticker, data in tqdm(ticker_data.items(), desc="Normalizing"):
+        normalized = data.copy()
+        normalized[:, robust_cols] = robust_scaler.transform(data[:, robust_cols])
+        normalized[:, zscore_cols] = zscore_scaler.transform(data[:, zscore_cols])
+        normalized[:, standard_cols] = standard_scaler.transform(data[:, standard_cols])
+        normalized_ticker_data[ticker] = normalized
+
+
+    print("✓ Normalization complete (fit on train, transformed all)")
+    return normalized_ticker_data
+

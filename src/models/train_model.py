@@ -1,15 +1,32 @@
 from typing import Dict, List, Optional
-from src.data.make_torch_datasets import build_samples, split_samples_time_based
+
+from tqdm import tqdm
+
+from src.data.make_torch_datasets import (
+    build_samples,
+    split_samples_time_based,
+    normalize_ticker_data,
+)
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from src.configs.training_config import BASELINE, BIDIRECTIONAL_STRONG, DEEP_NETWORK, FAST_EXPERIMENTAL, FIRST_CONFIG
+from src.configs.training_config import (
+    BASELINE,
+    BIDIRECTIONAL_STRONG,
+    DEEP_NETWORK,
+    FAST_EXPERIMENTAL,
+    FIRST_CONFIG,
+)
 
 CFG = DEEP_NETWORK
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+USE_MIXED_PRECISION = torch.cuda.is_available()  # Auto-enable on GPU
+if USE_MIXED_PRECISION:
+    torch.backends.cudnn.benchmark = True
+
 
 def run_epoch(
     model: nn.Module,
@@ -17,6 +34,7 @@ def run_epoch(
     criterion: nn.Module,
     train: bool = True,
     optimizer: Optional[torch.optim.Optimizer] = None,
+    scaler: Optional[torch.amp.GradScaler] = None,
 ) -> Dict[str, float]:
     if train:
         model.train()
@@ -28,22 +46,35 @@ def run_epoch(
     running_loss = 0.0
     running_correct = 0
     running_total = 0
-
+    progress_bar = tqdm(loader, desc=f"")
     with context:
-        for X, y in loader:
-            X = X.to(device)          # (batch, seq_len, input_size)
-            y = y.to(device).float()  # (batch,)
+        for idx, (X, y) in enumerate(progress_bar):
+            X = X.to(device, non_blocking=True)  # (batch, seq_len, input_size)
+            y = y.to(device, non_blocking=True).float()  # (batch,)
 
-            logits = model(X)         # (batch,)
+            logits = model(X)  # (batch,)
             loss = criterion(logits, y)
-
             if train:
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            if USE_MIXED_PRECISION and train:
+                with torch.amp.autocast("cuda"):
+                    logits = model(X)
+                    loss = criterion(logits, y)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                logits = model(X)
+                loss = criterion(logits, y)
+
+                if train:
+                    loss.backward()
+                    optimizer.step()
 
             running_loss += loss.item() * y.size(0)
-
+            if idx % 10 == 0:
+                progress_bar.set_postfix({"loss": f"{loss.item():.4f}"})
             probs = torch.sigmoid(logits)
             preds = (probs >= 0.5).float()
             running_correct += (preds == y).sum().item()
@@ -63,6 +94,7 @@ def train_model(
     config: object,
 ):
     model.to(device)
+    scaler = torch.amp.GradScaler("cuda") if USE_MIXED_PRECISION else None
 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
@@ -84,6 +116,7 @@ def train_model(
             criterion=criterion,
             train=True,
             optimizer=optimizer,
+            scaler=scaler,
         )
 
         val_metrics = run_epoch(
@@ -92,6 +125,7 @@ def train_model(
             criterion=criterion,
             train=False,
             optimizer=None,
+            scaler=None,
         )
 
         history["train_loss"].append(train_metrics["loss"])
@@ -120,16 +154,44 @@ def train_model(
 if __name__ == "__main__":
     torch.manual_seed(42)
 
-    samples = build_samples(window_size=CFG.window_size)
+    samples, tickers_data = build_samples(window_size=CFG.window_size, use_cache=False)
     train_s, val_s, test_s = split_samples_time_based(samples)
+    tickers_data = normalize_ticker_data(tickers_data, train_s)
+    train_ds = StockDataset(
+        train_s, window_size=CFG.window_size, horizon=30, ticker_data=tickers_data
+    )
+    val_ds = StockDataset(
+        val_s, window_size=CFG.window_size, horizon=30, ticker_data=tickers_data
+    )
+    test_ds = StockDataset(
+        test_s, window_size=CFG.window_size, horizon=30, ticker_data=tickers_data
+    )
 
-    train_ds = StockDataset(train_s, window_size=CFG.window_size, horizon=30)
-    val_ds = StockDataset(val_s, window_size=CFG.window_size, horizon=30)
-    test_ds = StockDataset(test_s, window_size=CFG.window_size, horizon=30)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=CFG.batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        prefetch_factor=2,
+    )
 
-    train_loader = DataLoader(train_ds, batch_size=CFG.batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=CFG.batch_size, shuffle=False)
-    test_loader = DataLoader(test_ds, batch_size=CFG.batch_size, shuffle=False)
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=CFG.batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        prefetch_factor=2,
+    )
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=CFG.batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        prefetch_factor=2,
+    )
 
     X_batch, y_batch = next(iter(train_loader))
     input_size = X_batch.shape[2]
@@ -152,3 +214,7 @@ if __name__ == "__main__":
     )
 
     print("Training finished.")
+    if torch.cuda.is_available():
+        print(
+            f"\nPeak GPU Memory: {torch.cuda.max_memory_allocated() / 1024**2:.1f} MB"
+        )
