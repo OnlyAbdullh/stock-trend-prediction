@@ -15,7 +15,7 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
-from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig,CONFIG_ONLY1
+from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, SEVENTH_CONFIG, TrainingConfig,CONFIG_ONLY1
  
 CFG = CONFIG_ONLY1       
 MODE = "train"            
