@@ -7,12 +7,13 @@ from os import name
 class TrainingConfig:
     name: str = "default"
     window_size: int = 60
-    hidden_size: int = 128
+    hidden_size: int = 32
     num_layers: int = 2
-    bidirectional: bool = True
-    dropout: float = 0.3
+    bidirectional: bool = False
+    dropout: float = 0.4
     batch_size: int = 64
     learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
     optimizer: str = 'Adam'
 
  
@@ -49,7 +50,7 @@ Epoch 007 | train_loss=0.6058  train_acc=0.6594  val_loss=0.7575  val_acc=0.4982
 Epoch 008 | train_loss=0.6046  train_acc=0.6607  val_loss=0.7671  val_acc=0.4898
 Epoch 009 | train_loss=0.6037  train_acc=0.6613  val_loss=0.7552  val_acc=0.4974
 Epoch 010 | train_loss=0.6028  train_acc=0.6626  val_loss=0.7800  val_acc=0.5015
-بدون L2
+without L2
 """
 THIRD_CONFIG = TrainingConfig(
     name="third",
@@ -214,4 +215,22 @@ CONFIG_ONLY1 = TrainingConfig(
     batch_size=256,
     learning_rate=5e-4,
     window_size=45,
+)
+"""
+Epoch 001 | train_loss=0.6712  train_acc=0.5814  val_loss=0.7397  val_acc=0.4650
+Epoch 002 | train_loss=0.6568  train_acc=0.6007  val_loss=0.7548  val_acc=0.4733
+Epoch 003 | train_loss=0.6487  train_acc=0.6126  val_loss=0.7651  val_acc=0.4734
+Epoch 004 | train_loss=0.6436  train_acc=0.6194  val_loss=0.7520  val_acc=0.4824
+with L2"""
+
+CONFIG_ONLY2 = TrainingConfig(
+    name="only2",
+    hidden_size=25,
+    num_layers=2,
+    bidirectional=False,
+    dropout=0.4,
+    batch_size=256,
+    learning_rate=5e-4,
+    window_size=45,
+    weight_decay=1e-5,
 )

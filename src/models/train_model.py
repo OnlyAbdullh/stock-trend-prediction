@@ -15,9 +15,9 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
-from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig,CONFIG_ONLY1
+from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig,CONFIG_ONLY1,CONFIG_ONLY2
  
-CFG = CONFIG_ONLY1       
+CFG = CONFIG_ONLY2
 MODE = "train"            
 CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
 
@@ -103,7 +103,7 @@ def train_loop(
        optimizer = torch.optim.Adam(
         model.parameters(),
         lr=cfg.learning_rate,
-        weight_decay=1e-5 
+        weight_decay=cfg.weight_decay
 )
 
 
