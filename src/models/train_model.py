@@ -7,22 +7,24 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-
+import pandas as pd
 from src.data.make_torch_datasets import (
-    build_samples,
-    split_samples_time_based,
-    normalize_ticker_data,
+    split_dataframe_by_date,
+    build_samples_from_df,
+     normalize_df,
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
 # from src.models.gru_attention_model import GRUModelWithAttention
 from src.configs.training_config import *
+from src.visualization.visualize import plot_training_curves
+
 # from src.models.transformer_model import TemporalTransformer
 
  
 CFG = ALAA_CONFIG_3
 MODE = "train"
-CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
+CHECKPOINT_PATH = r"models/gru_tenth_20260128_134436.pt"
 NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
 NUMBER_EPOCHS = 5
 
@@ -33,12 +35,12 @@ if USE_MIXED_PRECISION:
 
 
 def run_epoch(
-    model: nn.Module,
-    loader: DataLoader,
-    criterion: nn.Module,
-    train: bool = True,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    scaler: Optional[torch.amp.GradScaler] = None,
+        model: nn.Module,
+        loader: DataLoader,
+        criterion: nn.Module,
+        train: bool = True,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        scaler: Optional[torch.amp.GradScaler] = None,
 ) -> Dict[str, float]:
     if train:
         model.train()
@@ -90,27 +92,26 @@ def run_epoch(
 
 
 def train_loop(
-    model: nn.Module,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    num_epochs: int,
-    cfg: TrainingConfig,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    history: Optional[Dict[str, List[float]]] = None,
-    best_val_loss: float = float("inf"),
-    start_epoch: int = 0,
+        model: nn.Module,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        num_epochs: int,
+        cfg: TrainingConfig,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        history: Optional[Dict[str, List[float]]] = None,
+        best_val_loss: float = float("inf"),
+        start_epoch: int = 0,
 ):
     model.to(device)
     scaler = torch.amp.GradScaler("cuda") if USE_MIXED_PRECISION else None
 
     criterion = nn.BCEWithLogitsLoss()
     if optimizer is None:
-       optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=cfg.learning_rate, 
-        weight_decay=cfg.weight_decay  
-)
-
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=cfg.learning_rate,
+            weight_decay=cfg.weight_decay
+        )
 
     if history is None:
         history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
@@ -157,13 +158,17 @@ def train_loop(
 
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     models_dir = os.path.join(project_root, "models")
+    vis_dir = os.path.join(project_root, "reports/figures")
     os.makedirs(models_dir, exist_ok=True)
 
     config_name = getattr(cfg, "name", "unnamed")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"gru_{config_name}_{timestamp}.pt"
+    comm = f'gru_{config_name}_{timestamp}'
+    filename = f"{comm}.pt"
     save_path = os.path.join(models_dir, filename)
-
+    plot_name = f'{comm}.png'
+    save_plot_path = os.path.join(vis_dir, plot_name)
+    plot_training_curves(history, save_plot_path)
     torch.save(
         {
             "model_state_dict": model.state_dict(),
@@ -176,23 +181,53 @@ def train_loop(
         save_path,
     )
     print(f"\nSaved checkpoint to: {save_path}")
+    print(f"\nSaved Plot to: {save_plot_path}")
 
     return model, history
 
+def build_data(cfg):
 
-def build_data(cfg: TrainingConfig):
-    samples, tickers_data = build_samples(window_size=cfg.window_size)
-    train_s, val_s, test_s = split_samples_time_based(samples)
-    tickers_data = normalize_ticker_data(tickers_data, train_s, NORMALIZATION_MODE)
+    df = pd.read_csv('data/processed/data.csv')
+    df['date'] = pd.to_datetime(df['date'])
+
+    train_df, val_df, test_df = split_dataframe_by_date(
+        df, train_ratio=0.7, val_ratio=0.15
+    )
+    train_df,val_df,test_df =  normalize_df(train_df, val_df,test_df,NORMALIZATION_MODE)
+
+    del df
+    import gc
+    gc.collect()
+
+    train_samples, train_ticker_data = build_samples_from_df(
+        train_df, window_size=cfg.window_size, horizon=30
+    )
+    val_samples, val_ticker_data = build_samples_from_df(
+        val_df, window_size=cfg.window_size, horizon=30
+    )
+
+    test_samples, test_ticker_data = build_samples_from_df(
+        test_df, window_size=cfg.window_size, horizon=30
+    )
+
 
     train_ds = StockDataset(
-        train_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
+        train_samples,
+        window_size=cfg.window_size,
+        horizon=30,
+        ticker_data=train_ticker_data
     )
     val_ds = StockDataset(
-        val_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
+        val_samples,
+        window_size=cfg.window_size,
+        horizon=30,
+        ticker_data=val_ticker_data
     )
     test_ds = StockDataset(
-        test_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
+        test_samples,
+        window_size=cfg.window_size,
+        horizon=30,
+        ticker_data=test_ticker_data
     )
     workers = 4
     train_loader = DataLoader(
@@ -219,10 +254,8 @@ def build_data(cfg: TrainingConfig):
         pin_memory=True,
         prefetch_factor=2,
     )
-
     X_batch, y_batch = next(iter(train_loader))
     input_size = X_batch.shape[2]
-
     return train_loader, val_loader, test_loader, input_size
  
 def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
@@ -274,10 +307,10 @@ if __name__ == "__main__":
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         history_old = ckpt.get("history", None)
-        if history_old is not None: 
+        if history_old is not None:
             trained_epochs = len(history_old.get("train_loss", []))
             print(f"Model was previously trained for {trained_epochs} epochs.")
-        else: 
+        else:
             print("No history found in checkpoint, assuming 0 epochs.")
 
         best_val_loss = ckpt.get("best_val_loss", float("inf"))
@@ -297,5 +330,5 @@ if __name__ == "__main__":
 
     if torch.cuda.is_available():
         print(
-            f"\nPeak GPU Memory: {torch.cuda.max_memory_allocated() / 1024**2:.1f} MB"
+            f"\nPeak GPU Memory: {torch.cuda.max_memory_allocated() / 1024 ** 2:.1f} MB"
         )
