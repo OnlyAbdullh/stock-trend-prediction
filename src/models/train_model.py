@@ -1,4 +1,6 @@
 from typing import Dict, List, Optional
+import os
+from datetime import datetime
 
 from tqdm import tqdm
 
@@ -12,15 +14,11 @@ from src.models.gru_model import GRUModel
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from src.configs.training_config import (
-    BASELINE,
-    BIDIRECTIONAL_STRONG,
-    DEEP_NETWORK,
-    FAST_EXPERIMENTAL,
+from src.configs.training_config import ( 
     FIRST_CONFIG,
 )
 
-CFG = DEEP_NETWORK
+CFG = FIRST_CONFIG
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()  # Auto-enable on GPU
@@ -146,6 +144,28 @@ def train_model(
     if best_state_dict is not None:
         model.load_state_dict(best_state_dict)
 
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    models_dir = os.path.join(project_root, "models")
+    os.makedirs(models_dir, exist_ok=True)
+
+    config_name = getattr(config, "name", "unnamed")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"gru_{config_name}_{timestamp}.pt"
+    save_path = os.path.join(models_dir, filename)
+
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "config": config.__dict__,
+            "history": history,
+            "best_val_loss": best_val_loss,
+            "use_mixed_precision": USE_MIXED_PRECISION,
+        },
+        save_path,
+    )
+    print(f"\nSaved checkpoint to: {save_path}")
+
     return model, history
 
 
@@ -207,7 +227,7 @@ if __name__ == "__main__":
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        num_epochs=4,
+        num_epochs=1,
         config=CFG,
     )
 
