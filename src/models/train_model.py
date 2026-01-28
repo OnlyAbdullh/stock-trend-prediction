@@ -52,8 +52,6 @@ def run_epoch(
             X = X.to(device, non_blocking=True)  # (batch, seq_len, input_size)
             y = y.to(device, non_blocking=True).float()  # (batch,)
 
-            logits = model(X)  # (batch,)
-            loss = criterion(logits, y)
             if train:
                 optimizer.zero_grad()
             if USE_MIXED_PRECISION and train:
@@ -154,7 +152,7 @@ def train_model(
 if __name__ == "__main__":
     torch.manual_seed(42)
 
-    samples, tickers_data = build_samples(window_size=CFG.window_size, use_cache=False)
+    samples, tickers_data = build_samples(window_size=CFG.window_size)
     train_s, val_s, test_s = split_samples_time_based(samples)
     tickers_data = normalize_ticker_data(tickers_data, train_s)
     train_ds = StockDataset(
@@ -171,7 +169,7 @@ if __name__ == "__main__":
         train_ds,
         batch_size=CFG.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=CFG.num_workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -180,7 +178,7 @@ if __name__ == "__main__":
         val_ds,
         batch_size=CFG.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=CFG.num_workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -188,7 +186,7 @@ if __name__ == "__main__":
         test_ds,
         batch_size=CFG.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=CFG.num_workers,
         pin_memory=True,
         prefetch_factor=2,
     )
