@@ -285,7 +285,7 @@ if __name__ == "__main__":
             optimizer=optimizer,
             history=history_old,
             best_val_loss=best_val_loss,
-            started_epoch=trained_epochs
+            start_epoch=trained_epochs
         )
 
     if torch.cuda.is_available():
