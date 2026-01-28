@@ -14,12 +14,14 @@ from src.data.make_torch_datasets import (
     normalize_ticker_data,
 )
 from src.data.stock_dataset import StockDataset
-from src.models.gru_model import GRUModel
+from src.models.gru_model import GRUModel 
+from src.models.gru_attention_model import GRUModelWithAttention
 from src.configs.training_config import *
- 
+from src.models.transformer_model import TemporalTransformer
+
 CFG = TENTH_CONFIG
-MODE = "resume"
-CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
+MODE = "train"
+CHECKPOINT_PATH = r""
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
@@ -230,7 +232,7 @@ def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
             num_layers=cfg.num_layers,
             dropout=cfg.dropout,
             bidirectional=cfg.bidirectional,
-        ) 
+        )
     else:
         raise ValueError(f"Unknown model_type: {cfg.model_type}")
 
