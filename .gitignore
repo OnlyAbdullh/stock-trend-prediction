@@ -95,3 +95,5 @@ predicting-stock-trends-rise-or-fall.zip
 models/*.pt
 models/*.pth
 models/checkpoints/**
+
+.history/

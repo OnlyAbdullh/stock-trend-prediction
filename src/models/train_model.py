@@ -15,11 +15,11 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
-from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig
+from src.configs.training_config import *
  
-CFG = SECOND_CONFIG       
-MODE = "resume"            
-CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
+CFG = TENTH_CONFIG
+MODE = "resume"
+CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
@@ -100,7 +100,12 @@ def train_loop(
 
     criterion = nn.BCEWithLogitsLoss()
     if optimizer is None:
-        optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate)
+       optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=cfg.learning_rate, 
+        weight_decay=cfg.weight_decay  
+)
+
 
     if history is None:
         history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
@@ -214,6 +219,20 @@ def build_data(cfg: TrainingConfig):
     input_size = X_batch.shape[2]
 
     return train_loader, val_loader, test_loader, input_size
+ 
+def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
+    mt = cfg.model_type.lower()
+
+    if mt == "gru":
+        return GRUModel(
+            input_size=input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            bidirectional=cfg.bidirectional,
+        ) 
+    else:
+        raise ValueError(f"Unknown model_type: {cfg.model_type}")
 
 if __name__ == "__main__":
     torch.manual_seed(42)
@@ -222,13 +241,7 @@ if __name__ == "__main__":
         cfg = CFG
         train_loader, val_loader, test_loader, input_size = build_data(cfg)
 
-        model = GRUModel(
-            input_size=input_size,
-            hidden_size=cfg.hidden_size,
-            num_layers=cfg.num_layers,
-            dropout=cfg.dropout,
-            bidirectional=cfg.bidirectional,
-        )
+        model = build_model_from_config(input_size, cfg)
         print("Starting training from scratch...")
         model, history = train_loop(
             model=model,
@@ -248,13 +261,7 @@ if __name__ == "__main__":
 
         train_loader, val_loader, test_loader, input_size = build_data(cfg)
 
-        model = GRUModel(
-            input_size=input_size,
-            hidden_size=cfg.hidden_size,
-            num_layers=cfg.num_layers,
-            dropout=cfg.dropout,
-            bidirectional=cfg.bidirectional,
-        )
+        model = build_model_from_config(input_size, cfg)
         model.load_state_dict(ckpt["model_state_dict"])
         model.to(device)
 
@@ -275,12 +282,12 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=4,  
+            num_epochs=5,
             cfg=cfg,
             optimizer=optimizer,
             history=history_old,
             best_val_loss=best_val_loss,
-            started_epoch=trained_epochs
+            start_epoch=trained_epochs
         )
 
     if torch.cuda.is_available():
