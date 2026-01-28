@@ -19,7 +19,7 @@ from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingCon
  
 CFG = SECOND_CONFIG       
 MODE = "resume"            
-CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_unnamed_20260128_115753.pt"     
+CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
@@ -261,6 +261,12 @@ if __name__ == "__main__":
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         history_old = ckpt.get("history", None)
+        if history_old is not None: 
+            trained_epochs = len(history_old.get("train_loss", []))
+            print(f"Model was previously trained for {trained_epochs} epochs.")
+        else: 
+            print("No history found in checkpoint, assuming 0 epochs.")
+
         best_val_loss = ckpt.get("best_val_loss", float("inf"))
 
         print(f"Resuming training from checkpoint: {CHECKPOINT_PATH}")
