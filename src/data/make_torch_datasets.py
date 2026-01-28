@@ -126,47 +126,51 @@ def split_samples_time_based(
     test_samples = samples_sorted[n_train + n_val:]
     return train_samples, val_samples, test_samples
 
+no_need_scaling = [
+    'is_up_day',
+    'month_sin',
+    'month_cos',
+    'price_position_20',
+]
 
+robust_scaling_features = [
+    'distance_from_high',
+    'downside_deviation_10',
+    'high_low_ratio',
+    'low_to_close_ratio',
+    'max_drawdown_20',
+    'parkinson_volatility',
+    'recent_high_20',
+    'volatility_20',
+    'VHF',
+    'MOBV',
+    'PVT_cumsum'
+]
+
+zscore_features = [
+    'ADTM',
+    'daily_return',
+    'MA_60_slope',
+    'MTM',
+    'price_to_MA5',
+    'price_to_MA20',
+    'price_to_MA60',
+    'PSY',
+    'RSI_14',
+]
+
+standard_scaler_features = [
+    'K'
+]
 def normalize_ticker_data(ticker_data, train_samples):
     """Normalize features: fit on train, transform on all"""
 
-    # Feature groups
-    no_scale = [mp[c] for c in [
-        'is_up_day',
-        'month_sin',
-        'month_cos',
-        'price_position_20',
-    ]]
 
-    robust_cols = [mp[c] for c in [
-        'distance_from_high',
-        'downside_deviation_10',
-        'high_low_ratio',
-        'low_to_close_ratio',
-        'max_drawdown_20',
-        'parkinson_volatility',
-        'recent_high_20',
-        'volatility_20',
-        'VHF',
-        'MOBV',
-        'PVT_cumsum',
-    ]]
+    robust_cols = [mp[c] for c in robust_scaling_features]
 
-    zscore_cols = [mp[c] for c in [
-        'ADTM',
-        'daily_return',
-        'MA_60_slope',
-        'MTM',
-        'price_to_MA5',
-        'price_to_MA20',
-        'price_to_MA60',
-        'PSY',
-        'RSI_14',
-    ]]
+    zscore_cols = [mp[c] for c in zscore_features]
 
-    standard_cols = [mp[c] for c in [
-        'K',
-    ]]
+    standard_cols = [mp[c] for c in standard_scaler_features]
 
 
     print("Collecting training data for normalization...")
