@@ -176,7 +176,7 @@ def train_loop(
 
 
 def build_data(cfg: TrainingConfig):
-    samples, tickers_data = build_samples(window_size=cfg.window_size, use_cache=False)
+    samples, tickers_data = build_samples(window_size=cfg.window_size)
     train_s, val_s, test_s = split_samples_time_based(samples)
     tickers_data = normalize_ticker_data(tickers_data, train_s)
 
@@ -189,12 +189,12 @@ def build_data(cfg: TrainingConfig):
     test_ds = StockDataset(
         test_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
     )
-
+    workers = 4
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -202,7 +202,7 @@ def build_data(cfg: TrainingConfig):
         val_ds,
         batch_size=cfg.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -210,7 +210,7 @@ def build_data(cfg: TrainingConfig):
         test_ds,
         batch_size=cfg.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )

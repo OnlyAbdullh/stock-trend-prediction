@@ -13,7 +13,7 @@ torch.manual_seed(42)
 random.seed(42)
 from tqdm import tqdm
 import pandas as pd
-def build_samples(window_size = 60,use_cache = True):
+def build_samples(window_size = 60):
     
     print("Loading CSV...")
     df = pd.read_csv('data/processed/data.csv')
@@ -97,9 +97,11 @@ def build_samples(window_size = 60,use_cache = True):
 
             date = dates[i]
             samples.append((ticker, i, label, date))
+    del df
+    import gc
+    gc.collect()
 
-
-    StockDataset.ticker_data = ticker_data
+    # StockDataset.ticker_data = ticker_data
     print(f"✓ Processed {len(samples):,} samples from {len(ticker_data)} tickers")
     return samples, ticker_data
 
