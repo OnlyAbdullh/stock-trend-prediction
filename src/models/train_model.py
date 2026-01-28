@@ -22,7 +22,7 @@ from src.visualization.visualize import plot_training_curves
 # from src.models.transformer_model import TemporalTransformer
 
  
-CFG = ALAA_CONFIG_3
+CFG = SIXTH_CONFIG
 MODE = "train"
 CHECKPOINT_PATH = r"models/gru_tenth_20260128_134436.pt"
 NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
@@ -189,12 +189,12 @@ def build_data(cfg):
 
     df = pd.read_csv('data/processed/data.csv')
     df['date'] = pd.to_datetime(df['date'])
-
+    
     train_df, val_df, test_df = split_dataframe_by_date(
         df, train_ratio=0.7, val_ratio=0.15
     )
+    print("Normalizing")
     train_df,val_df,test_df =  normalize_df(train_df, val_df,test_df,NORMALIZATION_MODE)
-
     del df
     import gc
     gc.collect()
@@ -229,7 +229,7 @@ def build_data(cfg):
         horizon=30,
         ticker_data=test_ticker_data
     )
-    workers = 4
+    workers = 2
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.batch_size,
@@ -254,8 +254,9 @@ def build_data(cfg):
         pin_memory=True,
         prefetch_factor=2,
     )
-    X_batch, y_batch = next(iter(train_loader))
-    input_size = X_batch.shape[2]
+    
+    x0, _ = train_ds[0]
+    input_size = x0.shape[-1]
     return train_loader, val_loader, test_loader, input_size
  
 def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:

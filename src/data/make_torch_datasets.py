@@ -18,72 +18,53 @@ import pandas as pd
 
 mp = {}
 
+FEATURE_COLS = [
+        "daily_return",
+        "high_low_ratio",
+        "price_to_MA5",
+        "price_to_MA20",
+        "price_to_MA60",
+        "MA_60_slope",
+        "volatility_20",
+        "RSI_14",
+        "parkinson_volatility",
+        "recent_high_20",
+        "distance_from_high",
+        "low_to_close_ratio",
+        "price_position_20",
+        "max_drawdown_20",
+        "downside_deviation_10",
+        "month_sin",
+        "month_cos",
+        "is_up_day",
+        "PVT_cumsum",
+        "MOBV",
+        "MTM",
+        "ADTM",
+        "PSY",
+        "VHF",
+        "K",
+    ]
 
 def build_samples_from_df(
-        df: pd.DataFrame,
-        window_size: int = 60,
-        horizon: int = 30,
+    df: pd.DataFrame,
+    window_size: int = 60,
+    horizon: int = 30,
 ) -> Tuple[List, Dict]:
     ticker_data = {}
     samples = []
 
-    FEATURE_COLS = [
-        # Price Features (2)
-        'daily_return',  # 0
-        'high_low_ratio',  # 1
-
-        # MA-Based (4)
-        'price_to_MA5',  # 2
-        'price_to_MA20',  # 3
-        'price_to_MA60',  # 4
-        'MA_60_slope',  # 5
-
-        # Volatility (3)
-        'volatility_20',  # 6
-        'RSI_14',  # 7
-        'parkinson_volatility',  # 8
-
-        # Critical Features (6)
-        'recent_high_20',  # 9
-        'distance_from_high',  # 10
-        'low_to_close_ratio',  # 11
-        'price_position_20',  # 12
-        'max_drawdown_20',  # 13
-        'downside_deviation_10',  # 14
-
-        # Temporal (3)
-        'month_sin',  # 15
-        'month_cos',  # 16
-        'is_up_day',  # 17
-
-        # Volume Price Index (2)
-        'PVT_cumsum',  # 18
-        'MOBV',  # 19
-
-        # Directional Movement (1)
-        'MTM',  # 20
-
-        # OverBought & OverSold (1)
-        'ADTM',  # 21
-
-        # Energy & Volatility (2)
-        'PSY',  # 22
-        'VHF',  # 23
-
-        # Stochastic (1)
-        'K',  # 24
-    ]
 
     for i, col in enumerate(FEATURE_COLS):
         mp[col] = i
-    for ticker, group in tqdm(df.groupby('ticker'), desc="Building samples"):
-        group = group.sort_values('date').reset_index(drop=True)
+    for ticker, group in tqdm(df.groupby("ticker"), desc="Building samples"):
+        group = group.sort_values("date").reset_index(drop=True)
         n = len(group)
 
         if n < window_size + horizon:
             continue
 
-        close = group['close'].values.astype(np.float32)
+        close = group["close"].values.astype(np.float32)
         missing = group["missing_days"].values.astype(np.int8)
         bad = (missing > 0).astype(np.int32)
         bad_cumsum = np.cumsum(bad)
@@ -94,7 +75,7 @@ def build_samples_from_df(
         # Store feature data
         ticker_data[ticker] = group[FEATURE_COLS].values.astype(np.float32)
 
-        dates = group['date'].values
+        dates = group["date"].values
         for i in range(window_size - 1, n - horizon):
             seq_start = i - window_size + 1
             seq_end = i + horizon
@@ -110,11 +91,11 @@ def build_samples_from_df(
 
 
 def split_dataframe_by_date(
-        df: pd.DataFrame,
-        train_ratio: float = 0.7,
-        val_ratio: float = 0.15,
+    df: pd.DataFrame,
+    train_ratio: float = 0.7,
+    val_ratio: float = 0.15,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    df = df.sort_values('date').reset_index(drop=True)
+    df = df.sort_values("date").reset_index(drop=True)
 
     n = len(df)
     train_end = int(n * train_ratio)
@@ -127,45 +108,43 @@ def split_dataframe_by_date(
 
 
 no_need_scaling = [
-    'is_up_day',
-    'month_sin',
-    'month_cos',
-    'price_position_20',
+    "is_up_day",
+    "month_sin",
+    "month_cos",
+    "price_position_20",
 ]
 
 robust_scaling_features = [
-    'distance_from_high',
-    'downside_deviation_10',
-    'high_low_ratio',
-    'low_to_close_ratio',
-    'max_drawdown_20',
-    'parkinson_volatility',
-    'recent_high_20',
-    'volatility_20',
-    'VHF',
-    'MOBV',
-    'PVT_cumsum'
+    "distance_from_high",
+    "downside_deviation_10",
+    "high_low_ratio",
+    "low_to_close_ratio",
+    "max_drawdown_20",
+    "parkinson_volatility",
+    "recent_high_20",
+    "volatility_20",
+    "VHF",
+    "MOBV",
+    "PVT_cumsum",
 ]
 
 zscore_features = [
-    'ADTM',
-    'daily_return',
-    'MA_60_slope',
-    'MTM',
-    'price_to_MA5',
-    'price_to_MA20',
-    'price_to_MA60',
-    'PSY',
-    'RSI_14',
+    "ADTM",
+    "daily_return",
+    "MA_60_slope",
+    "MTM",
+    "price_to_MA5",
+    "price_to_MA20",
+    "price_to_MA60",
+    "PSY",
+    "RSI_14",
 ]
 
-standard_scaler_features = [
-    'K'
-]
+standard_scaler_features = ["K"]
 
 
 def normalize_df(df_train, df_val, df_test, norm_mode="norm1"):
-    if norm_mode == 'norm1':
+    if norm_mode == "norm1":
         df_train, df_val, df_test = normalize_df_mode1(df_train, df_val, df_test)
     # elif norm_mode == 'norm2':
     #     normalized_data = normalize_ticker_data_mode2(ticker_data,train_samples)
@@ -185,7 +164,11 @@ def normalize_df_mode1(df_train, df_val, df_test):
         "z": StandardScaler().fit(df_train[zscore_features]),
         "std": StandardScaler().fit(df_train[standard_scaler_features]),
     }
-    return normalize_df_sc(df_train, scalars), normalize_df_sc(df_val, scalars), normalize_df_sc(df_test, scalars)
+    return (
+        normalize_df_sc(df_train, scalars),
+        normalize_df_sc(df_val, scalars),
+        normalize_df_sc(df_test, scalars),
+    )
 
 
 def normalize_df_sc(df, scalers):
@@ -193,9 +176,7 @@ def normalize_df_sc(df, scalers):
     df_scaled[robust_scaling_features] = scalers["robust"].transform(
         df[robust_scaling_features]
     )
-    df_scaled[zscore_features] = scalers["z"].transform(
-        df[zscore_features]
-    )
+    df_scaled[zscore_features] = scalers["z"].transform(df[zscore_features])
     df_scaled[standard_scaler_features] = scalers["std"].transform(
         df[standard_scaler_features]
     )
