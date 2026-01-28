@@ -14,11 +14,9 @@ from src.models.gru_model import GRUModel
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from src.configs.training_config import ( 
-    FIRST_CONFIG,
-)
+from src.configs.training_config import *
 
-CFG = FIRST_CONFIG
+CFG = NINTH_CONFIG
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()  # Auto-enable on GPU
@@ -227,7 +225,7 @@ if __name__ == "__main__":
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        num_epochs=1,
+        num_epochs=10,
         config=CFG,
     )
 
