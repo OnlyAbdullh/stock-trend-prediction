@@ -15,10 +15,10 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
-from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig
+from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig,CONFIG_ONLY1
  
-CFG = SECOND_CONFIG       
-MODE = "resume"            
+CFG = CONFIG_ONLY1       
+MODE = "train"            
 CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -100,7 +100,12 @@ def train_loop(
 
     criterion = nn.BCEWithLogitsLoss()
     if optimizer is None:
-        optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate)
+       optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=cfg.learning_rate,
+        weight_decay=1e-5 
+)
+
 
     if history is None:
         history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
