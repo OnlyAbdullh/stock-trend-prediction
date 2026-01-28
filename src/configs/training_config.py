@@ -109,7 +109,7 @@ FIFTH_CONFIG = TrainingConfig(
     bidirectional=True,
     dropout=0.3,
     batch_size=256,
-    learning_rate=5e-4,
+    learning_rate=1e-3,
     window_size=60,
 )
 
@@ -120,7 +120,7 @@ SIXTH_CONFIG = TrainingConfig(
     num_layers=2,
     bidirectional=True,
     dropout=0.35,
-    batch_size=256,
+    batch_size=512,
     learning_rate=8e-4,
     window_size=60,
 )
