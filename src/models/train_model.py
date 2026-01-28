@@ -184,12 +184,12 @@ def build_data(cfg: TrainingConfig):
     test_ds = StockDataset(
         test_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
     )
-
+    workers = 4
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.batch_size,
         shuffle=True,
-        num_workers=CFG.num_workers,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -197,7 +197,7 @@ def build_data(cfg: TrainingConfig):
         val_ds,
         batch_size=cfg.batch_size,
         shuffle=False,
-        num_workers=CFG.num_workers,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )
@@ -205,7 +205,7 @@ def build_data(cfg: TrainingConfig):
         test_ds,
         batch_size=cfg.batch_size,
         shuffle=False,
-        num_workers=CFG.num_workers,
+        num_workers=workers,
         pin_memory=True,
         prefetch_factor=2,
     )
