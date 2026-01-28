@@ -15,11 +15,15 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
+# from src.models.gru_attention_model import GRUModelWithAttention
 from src.configs.training_config import *
+# from src.models.transformer_model import TemporalTransformer
+
  
-CFG = TENTH_CONFIG
-MODE = "resume"
+CFG = FIRST_CONFIG
+MODE = "train"
 CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
+NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
@@ -178,7 +182,7 @@ def train_loop(
 def build_data(cfg: TrainingConfig):
     samples, tickers_data = build_samples(window_size=cfg.window_size)
     train_s, val_s, test_s = split_samples_time_based(samples)
-    tickers_data = normalize_ticker_data(tickers_data, train_s)
+    tickers_data = normalize_ticker_data(tickers_data, train_s, NORMALIZATION_MODE)
 
     train_ds = StockDataset(
         train_s, window_size=cfg.window_size, horizon=30, ticker_data=tickers_data
@@ -247,7 +251,7 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=10,
+            num_epochs=5,
             cfg=cfg,
         )
 
