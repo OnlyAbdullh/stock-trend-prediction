@@ -20,107 +20,106 @@ mp = {}
 
 
 def build_samples_from_df(
-    df: pd.DataFrame,
-    window_size: int = 60,
-    horizon: int = 30,
-) -> Tuple[List, Dict]: 
+        df: pd.DataFrame,
+        window_size: int = 60,
+        horizon: int = 30,
+) -> Tuple[List, Dict]:
     ticker_data = {}
     samples = []
-    
+
     FEATURE_COLS = [
-    # Price Features (2)
-    'daily_return',  # 0
-    'high_low_ratio',  # 1
+        # Price Features (2)
+        'daily_return',  # 0
+        'high_low_ratio',  # 1
 
-    # MA-Based (4)
-    'price_to_MA5',  # 2
-    'price_to_MA20',  # 3
-    'price_to_MA60',  # 4
-    'MA_60_slope',  # 5
+        # MA-Based (4)
+        'price_to_MA5',  # 2
+        'price_to_MA20',  # 3
+        'price_to_MA60',  # 4
+        'MA_60_slope',  # 5
 
-    # Volatility (3)
-    'volatility_20',  # 6
-    'RSI_14',  # 7
-    'parkinson_volatility',  # 8
+        # Volatility (3)
+        'volatility_20',  # 6
+        'RSI_14',  # 7
+        'parkinson_volatility',  # 8
 
-    # Critical Features (6)
-    'recent_high_20',  # 9
-    'distance_from_high',  # 10
-    'low_to_close_ratio',  # 11
-    'price_position_20',  # 12
-    'max_drawdown_20',  # 13
-    'downside_deviation_10',  # 14
+        # Critical Features (6)
+        'recent_high_20',  # 9
+        'distance_from_high',  # 10
+        'low_to_close_ratio',  # 11
+        'price_position_20',  # 12
+        'max_drawdown_20',  # 13
+        'downside_deviation_10',  # 14
 
-    # Temporal (3)
-    'month_sin',  # 15
-    'month_cos',  # 16
-    'is_up_day',  # 17
+        # Temporal (3)
+        'month_sin',  # 15
+        'month_cos',  # 16
+        'is_up_day',  # 17
 
-    # Volume Price Index (2)
-    'PVT_cumsum',  # 18
-    'MOBV',  # 19
+        # Volume Price Index (2)
+        'PVT_cumsum',  # 18
+        'MOBV',  # 19
 
-    # Directional Movement (1)
-    'MTM',  # 20
+        # Directional Movement (1)
+        'MTM',  # 20
 
-    # OverBought & OverSold (1)
-    'ADTM',  # 21
+        # OverBought & OverSold (1)
+        'ADTM',  # 21
 
-    # Energy & Volatility (2)
-    'PSY',  # 22
-    'VHF',  # 23
+        # Energy & Volatility (2)
+        'PSY',  # 22
+        'VHF',  # 23
 
-    # Stochastic (1)
-    'K',  # 24
- ]
+        # Stochastic (1)
+        'K',  # 24
+    ]
 
     for i, col in enumerate(FEATURE_COLS):
-     mp[col] = i
+        mp[col] = i
     for ticker, group in tqdm(df.groupby('ticker'), desc="Building samples"):
         group = group.sort_values('date').reset_index(drop=True)
         n = len(group)
-        
+
         if n < window_size + horizon:
             continue
-        
+
         close = group['close'].values.astype(np.float32)
         missing = group["missing_days"].values.astype(np.int8)
         bad = (missing > 0).astype(np.int32)
         bad_cumsum = np.cumsum(bad)
-        
+
         def has_gap(a, b):
             return bad_cumsum[b] - (bad_cumsum[a - 1] if a > 0 else 0) > 0
-        
+
         # Store feature data
         ticker_data[ticker] = group[FEATURE_COLS].values.astype(np.float32)
-        
+
         dates = group['date'].values
         for i in range(window_size - 1, n - horizon):
             seq_start = i - window_size + 1
             seq_end = i + horizon
-            
+
             if has_gap(seq_start, seq_end):
                 continue
-            
+
             label = 1 if close[i + horizon] > close[i] else 0
             date = dates[i]
             samples.append((ticker, i, label, date))
-    
+
     return samples, ticker_data
 
- 
+
 def split_dataframe_by_date(
-    df: pd.DataFrame,
-    train_ratio: float = 0.7,
-    val_ratio: float = 0.15,
+        df: pd.DataFrame,
+        train_ratio: float = 0.7,
+        val_ratio: float = 0.15,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
- 
     df = df.sort_values('date').reset_index(drop=True)
-    
+
     n = len(df)
     train_end = int(n * train_ratio)
     val_end = int(n * (train_ratio + val_ratio))
-    
+
     train_df = df.iloc[:train_end].copy()
     val_df = df.iloc[train_end:val_end].copy()
     test_df = df.iloc[val_end:].copy()
@@ -165,236 +164,39 @@ standard_scaler_features = [
 ]
 
 
-def normalize_ticker_data(ticker_data, train_samples, normalization_mode):
-    if normalization_mode == 'norm1':
-        normalized_data = normalize_ticker_data_mode1(ticker_data,train_samples)
-    elif normalization_mode == 'norm2':
-        normalized_data = normalize_ticker_data_mode2(ticker_data,train_samples)
-    elif normalization_mode == 'norm3':
-        normalized_data = normalize_ticker_data_mode3(ticker_data,train_samples)
-    elif normalization_mode == 'norm4':
-        normalized_data = normalize_ticker_data_mode4(ticker_data,train_samples)
-    else:
-        normalized_data = normalize_ticker_data_mode5(ticker_data,train_samples)
+def normalize_df(df_train, df_val, df_test, norm_mode="norm1"):
+    if norm_mode == 'norm1':
+        df_train, df_val, df_test = normalize_df_mode1(df_train, df_val, df_test)
+    # elif norm_mode == 'norm2':
+    #     normalized_data = normalize_ticker_data_mode2(ticker_data,train_samples)
+    # elif norm_mode == 'norm3':
+    #     normalized_data = normalize_ticker_data_mode3(ticker_data,train_samples)
+    # elif norm_mode == 'norm4':
+    #     normalized_data = normalize_ticker_data_mode4(ticker_data,train_samples)
+    # else:
+    #     normalized_data = normalize_ticker_data_mode5(ticker_data,train_samples)
 
-    return normalized_data
+    return df_train, df_val, df_test
 
-def normalize_ticker_data_mode1(ticker_data, train_samples):
-    """Normalize features: fit on train, transform on all"""
 
-    robust_cols = [mp[c] for c in robust_scaling_features]
-    zscore_cols = [mp[c] for c in zscore_features]
-    standard_cols = [mp[c] for c in standard_scaler_features]
-
-    print("Collecting training data for normalization...")
-    train_data = []
-    for ticker, i, _, _ in train_samples:
-        train_data.append(ticker_data[ticker][i])
-    train_data = np.array(train_data)
-
-    print("Fitting scalers on training data...")
-    robust_scaler = RobustScaler()
-    zscore_scaler = StandardScaler()
-    standard_scaler = StandardScaler()
-
-    robust_scaler.fit(train_data[:, robust_cols])
-    zscore_scaler.fit(train_data[:, zscore_cols])
-    standard_scaler.fit(train_data[:, standard_cols])
-
-    print("Normalizing all ticker data...")
-    normalized_ticker_data = {}
-    for ticker, data in tqdm(ticker_data.items(), desc="Normalizing"):
-        normalized = data.copy()
-        normalized[:, robust_cols] = robust_scaler.transform(data[:, robust_cols])
-        normalized[:, zscore_cols] = zscore_scaler.transform(data[:, zscore_cols])
-        normalized[:, standard_cols] = standard_scaler.transform(data[:, standard_cols])
-        normalized_ticker_data[ticker] = normalized
-
-    print("✓ Normalization Mode 1 complete (fit on train, transformed all)")
-    return normalized_ticker_data
-
-def normalize_ticker_data_mode2(ticker_data, train_samples):
-    """
-        1. تحويل الميزات التراكمية إلى نسبة تغير.
-        2. Winsorization (1%, 99%).
-        3. Box-Cox للبيانات الملتوية.
-        4. Scaling (Robust, Z-Score, Standard).
-        5. القص النهائي عند ±4 انحرافات معيارية.
-        """
-
-    # تحديد الفهارس باستخدام القاموس mp
-    robust_cols = [mp[c] for c in robust_scaling_features]
-    zscore_cols = [mp[c] for c in zscore_features]
-    standard_cols = [mp[c] for c in standard_scaler_features]
-
-    # ميزات تحتاج Winsorization عدواني (حسب test-test)
-    winsor_map = {
-        mp['volatility_20']: (1, 99),
-        mp['high_low_ratio']: (1, 99),
-        mp['parkinson_volatility']: (1, 99),
-        mp['price_to_MA5']: (0.5, 99.5),
-        mp['price_to_MA20']: (0.5, 99.5),
-        mp['price_to_MA60']: (0.5, 99.5)
+def normalize_df_mode1(df_train, df_val, df_test):
+    scalars = {
+        "robust": RobustScaler().fit(df_train[robust_scaling_features]),
+        "z": StandardScaler().fit(df_train[zscore_features]),
+        "std": StandardScaler().fit(df_train[standard_scaler_features]),
     }
+    return normalize_df_sc(df_train, scalars), normalize_df_sc(df_val, scalars), normalize_df_sc(df_test, scalars)
 
-    # ميزات تحتاج تحويل Box-Cox
-    boxcox_cols = [mp['volatility_20'], mp['high_low_ratio'], mp['parkinson_volatility']]
 
-    # الميزات التراكمية التي سنحولها لنسبة تغير
-    cum_cols = [mp['PVT_cumsum'], mp['MOBV']]
-
-    def _apply_advanced_transforms(data_arr):
-        """تابع داخلي لمعالجة المصفوفات بنفس المنطق للتدريب والاختبار"""
-        arr = data_arr.copy()
-
-        # أ. تحويل Cumulative إلى % Change (معالجة يدوية للمصفوفة)
-        for col in cum_cols:
-            # حساب التغير: (current - previous) / previous
-            shifted = np.roll(arr[:, col], 1)
-            shifted[0] = arr[0, col]
-            denom = np.where(shifted == 0, 1e-9, shifted)
-            pct_change = (arr[:, col] - shifted) / denom
-            arr[:, col] = np.clip(pct_change, -0.5, 0.5)
-
-        # ب. Winsorization
-        for col, (low, high) in winsor_map.items():
-            l_val = np.percentile(arr[:, col], low)
-            h_val = np.percentile(arr[:, col], high)
-            arr[:, col] = np.clip(arr[:, col], l_val, h_val)
-
-        # ج. Box-Cox (تأكد من أن القيم موجبة)
-        for col in boxcox_cols:
-            min_val = np.min(arr[:, col])
-            shifted_data = arr[:, col] - min_val + 1.0
-            # نستخدم stats.boxcox مباشرة (التبسيط المستخدم في test-test)
-            transformed, _ = stats.boxcox(shifted_data)
-            arr[:, col] = transformed
-
-        return arr
-
-    print("Preparing Training Data for Fitting...")
-    raw_train = np.array([ticker_data[t][i] for t, i, _, _ in train_samples])
-
-    # معالجة بيانات التدريب قبل حساب المتوسطات والانحرافات
-    processed_train = _apply_advanced_transforms(raw_train)
-
-    print("Fitting Scalers...")
-    robust_scaler = RobustScaler().fit(processed_train[:, robust_cols])
-    zscore_scaler = StandardScaler().fit(processed_train[:, zscore_cols])
-    standard_scaler = StandardScaler().fit(processed_train[:, standard_cols])
-
-    print("Normalizing all ticker data (Mode 2)...")
-    normalized_ticker_data = {}
-
-    # ميزات لا يجب قصها نهائياً (مثل الوقت والنسب الثنائية)
-    skip_clip_cols = [mp[c] for c in no_need_scaling]
-
-    for ticker, data in tqdm(ticker_data.items(), desc="Normalizing"):
-        # 1. تطبيق التحويلات المتقدمة
-        norm = _apply_advanced_transforms(data)
-
-        # 2. تطبيق الـ Scalers
-        norm[:, robust_cols] = robust_scaler.transform(norm[:, robust_cols])
-        norm[:, zscore_cols] = zscore_scaler.transform(norm[:, zscore_cols])
-        norm[:, standard_cols] = standard_scaler.transform(norm[:, standard_cols])
-
-        # 3. القص النهائي (Final Clipping) عند ±4 لضمان استقرار الشبكة العصبية
-        all_scaled = robust_cols + zscore_cols + standard_cols
-        for col in all_scaled:
-            if col not in skip_clip_cols:
-                norm[:, col] = np.clip(norm[:, col], -4, 4)
-
-        normalized_ticker_data[ticker] = norm
-
-    print("✓ Normalization Mode 2 complete (Advanced Logic Applied)")
-    return normalized_ticker_data
-
-def normalize_ticker_data_mode3(ticker_data, train_samples):
-    """
-           1. تحويل الميزات التراكمية إلى نسبة تغير.
-           2. Winsorization (1%, 99%).
-           3. Box-Cox للبيانات الملتوية.
-           4. Scaling (Robust, Z-Score, Standard).
-           """
-
-    # تحديد الفهارس باستخدام القاموس mp
-    robust_cols = [mp[c] for c in robust_scaling_features]
-    zscore_cols = [mp[c] for c in zscore_features]
-    standard_cols = [mp[c] for c in standard_scaler_features]
-
-    # ميزات تحتاج Winsorization عدواني (حسب test-test)
-    winsor_map = {
-        mp['volatility_20']: (1, 99),
-        mp['high_low_ratio']: (1, 99),
-        mp['parkinson_volatility']: (1, 99),
-        mp['price_to_MA5']: (0.5, 99.5),
-        mp['price_to_MA20']: (0.5, 99.5),
-        mp['price_to_MA60']: (0.5, 99.5)
-    }
-
-    # ميزات تحتاج تحويل Box-Cox
-    boxcox_cols = [mp['volatility_20'], mp['high_low_ratio'], mp['parkinson_volatility']]
-
-    # الميزات التراكمية التي سنحولها لنسبة تغير
-    cum_cols = [mp['PVT_cumsum'], mp['MOBV']]
-
-    def _apply_advanced_transforms(data_arr):
-        """تابع داخلي لمعالجة المصفوفات بنفس المنطق للتدريب والاختبار"""
-        arr = data_arr.copy()
-
-        # أ. تحويل Cumulative إلى % Change (معالجة يدوية للمصفوفة)
-        for col in cum_cols:
-            # حساب التغير: (current - previous) / previous
-            shifted = np.roll(arr[:, col], 1)
-            shifted[0] = arr[0, col]
-            denom = np.where(shifted == 0, 1e-9, shifted)
-            pct_change = (arr[:, col] - shifted) / denom
-            arr[:, col] = np.clip(pct_change, -0.5, 0.5)
-
-        # ب. Winsorization
-        for col, (low, high) in winsor_map.items():
-            l_val = np.percentile(arr[:, col], low)
-            h_val = np.percentile(arr[:, col], high)
-            arr[:, col] = np.clip(arr[:, col], l_val, h_val)
-
-        # ج. Box-Cox (تأكد من أن القيم موجبة)
-        for col in boxcox_cols:
-            min_val = np.min(arr[:, col])
-            shifted_data = arr[:, col] - min_val + 1.0
-            # نستخدم stats.boxcox مباشرة (التبسيط المستخدم في test-test)
-            transformed, _ = stats.boxcox(shifted_data)
-            arr[:, col] = transformed
-
-        return arr
-
-    print("Preparing Training Data for Fitting...")
-    raw_train = np.array([ticker_data[t][i] for t, i, _, _ in train_samples])
-
-    # معالجة بيانات التدريب قبل حساب المتوسطات والانحرافات
-    processed_train = _apply_advanced_transforms(raw_train)
-
-    print("Fitting Scalers...")
-    robust_scaler = RobustScaler().fit(processed_train[:, robust_cols])
-    zscore_scaler = StandardScaler().fit(processed_train[:, zscore_cols])
-    standard_scaler = StandardScaler().fit(processed_train[:, standard_cols])
-
-    print("Normalizing all ticker data (Mode 3)...")
-    normalized_ticker_data = {}
-
-    for ticker, data in tqdm(ticker_data.items(), desc="Normalizing"):
-        # 1. تطبيق التحويلات المتقدمة
-        norm = _apply_advanced_transforms(data)
-
-        # 2. تطبيق الـ Scalers
-        norm[:, robust_cols] = robust_scaler.transform(norm[:, robust_cols])
-        norm[:, zscore_cols] = zscore_scaler.transform(norm[:, zscore_cols])
-        norm[:, standard_cols] = standard_scaler.transform(norm[:, standard_cols])
-
-    print("✓ Normalization Mode 3 complete (Advanced Logic Applied without clipping)")
-    return normalized_ticker_data
-
-def normalize_ticker_data_mode4(ticker_data, train_samples):
-    pass
-
-def normalize_ticker_data_mode5(ticker_data, train_samples):
-    pass
+def normalize_df_sc(df, scalers):
+    df_scaled = df.copy()
+    df_scaled[robust_scaling_features] = scalers["robust"].transform(
+        df[robust_scaling_features]
+    )
+    df_scaled[zscore_features] = scalers["z"].transform(
+        df[zscore_features]
+    )
+    df_scaled[standard_scaler_features] = scalers["std"].transform(
+        df[standard_scaler_features]
+    )
+    return df_scaled
