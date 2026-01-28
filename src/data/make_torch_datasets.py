@@ -126,13 +126,11 @@ def split_samples_time_based(
 
 def normalize_ticker_data(ticker_data, train_samples):
 
-    # --- تعريف الفهارس بناءً على قائمة FEATURE_COLS الأصلية في make_torch_datasets.py ---
-    # ملاحظة: PVT_cumsum هو الفهرس 18، MOBV هو 19
     robust_cols = [0, 1, 8, 9, 10, 11, 12, 13, 18, 19, 20]
     zscore_cols = [2, 3, 4, 5, 6, 7, 14, 15, 16, 17]
     standard_cols = [21]  # K
 
-    # ميزات تحتاج Winsorization (حسب test-test.py)
+    # ميزات تحتاج Winsorization
     # volatility_20(6), high_low_ratio(1), parkinson_volatility(8), price_to_MA...(2,3,4)
     winsor_params = {
         6: (1, 99), 1: (1, 99), 8: (1, 99),
@@ -143,17 +141,12 @@ def normalize_ticker_data(ticker_data, train_samples):
     boxcox_indices = [6, 1, 8]
 
     def _process_array_logic(data_array, is_training=False, scalers=None):
-        """وظيفة داخلية لتطبيق المنطق التسلسلي على مصفوفة أي ticker"""
         arr = data_array.copy()
 
-        # 1. تحويل PVT_cumsum (18) و MOBV (19) إلى نسبة تغير
-        # بما أننا لا نعدل build_samples، نحسب الفرق بين كل يوم والذي قبله
         for idx in [18, 19]:
-            # حساب pct_change: (current - prev) / prev
             prev_vals = np.roll(arr[:, idx], 1)
-            prev_vals[0] = arr[0, idx]  # تجنب NaN في العنصر الأول
+            prev_vals[0] = arr[0, idx]
 
-            # منع القسمة على صفر
             denom = np.where(prev_vals == 0, 1e-9, prev_vals)
             pct_change = (arr[:, idx] - prev_vals) / denom
             arr[:, idx] = np.clip(pct_change, -0.5, 0.5)
@@ -168,8 +161,6 @@ def normalize_ticker_data(ticker_data, train_samples):
         for col_idx in boxcox_indices:
             shift = np.min(arr[:, col_idx])
             shifted_data = arr[:, col_idx] - shift + 1.0
-            # ملاحظة: Box-Cox يفضل تطبيقه بـ Lambda ثابتة في الـ Transform،
-            # لكن هنا سنستخدم التبسيط المباشر كما في ملف التست
             transformed, _ = stats.boxcox(shifted_data)
             arr[:, col_idx] = transformed
 
@@ -179,23 +170,21 @@ def normalize_ticker_data(ticker_data, train_samples):
             arr[:, zscore_cols] = scalers['zscore'].transform(arr[:, zscore_cols])
             arr[:, standard_cols] = scalers['standard'].transform(arr[:, standard_cols])
 
-            # 5. Final Clipping ±4 std
+            # 5. Final Clipping ±10 std
             # استثناء الميزات الزمنية (15, 16, 17) و price_position_20 (12)
             skip_clip = [12, 15, 16, 17]
             for c in range(arr.shape[1]):
                 if c not in skip_clip:
-                    arr[:, c] = np.clip(arr[:, c], -4, 4)
+                    arr[:, c] = np.clip(arr[:, c], -10, 10)
 
         return arr
 
     print("Preparing Training Data for Fitting...")
-    # تجميع بيانات التدريب وتطبيق التحويلات الأولية عليها
     raw_train_list = []
     for ticker, i, _, _ in train_samples:
         raw_train_list.append(ticker_data[ticker][i])
     train_data_stack = np.array(raw_train_list)
 
-    # معالجة بيانات التدريب قبل الـ Fit
     processed_train = _process_array_logic(train_data_stack, is_training=True)
 
     print("Fitting Scalers...")

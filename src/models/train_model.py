@@ -17,8 +17,8 @@ from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
 from src.configs.training_config import *
  
-CFG = TENTH_CONFIG
-MODE = "resume"
+CFG = ALAA_CONFIG_3
+MODE = "train"
 CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -247,7 +247,7 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=10,
+            num_epochs=5,
             cfg=cfg,
         )
 
