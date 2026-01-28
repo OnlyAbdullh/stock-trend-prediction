@@ -14,15 +14,13 @@ from src.data.make_torch_datasets import (
     normalize_ticker_data,
 )
 from src.data.stock_dataset import StockDataset
-from src.models.gru_model import GRUModel  
-
+from src.models.gru_model import GRUModel
 from src.configs.training_config import *
+ 
+CFG = TENTH_CONFIG
+MODE = "resume"
+CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
 
-CFG = CONFIG_ONLY2
-MODE = "train"            
-CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
-
-  
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
 if USE_MIXED_PRECISION:
