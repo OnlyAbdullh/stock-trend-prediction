@@ -20,7 +20,7 @@ from src.configs.training_config import *
 # from src.models.transformer_model import TemporalTransformer
 
  
-CFG = ALAA_CONFIG_3
+CFG = FIRST_CONFIG
 MODE = "train"
 CHECKPOINT_PATH = r"D:/Development/PycharmProjects/stock-trend-prediction/models/gru_tenth_20260128_134436.pt"
 NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5

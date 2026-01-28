@@ -162,6 +162,8 @@ zscore_features = [
 standard_scaler_features = [
     'K'
 ]
+
+
 def normalize_ticker_data(ticker_data, train_samples, normalization_mode):
     if normalization_mode == 'norm1':
         normalized_data = normalize_ticker_data_mode1(ticker_data,train_samples)
