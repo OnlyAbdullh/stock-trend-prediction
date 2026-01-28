@@ -157,7 +157,7 @@ def normalize_ticker_data(ticker_data, train_samples):
             h_val = np.percentile(arr[:, col_idx], high)
             arr[:, col_idx] = np.clip(arr[:, col_idx], l_val, h_val)
 
-        # 3. تطبيق Box-Cox (يجب أن تكون القيم موجبة)
+        # 3. تطبيق Box-Cox
         for col_idx in boxcox_indices:
             shift = np.min(arr[:, col_idx])
             shifted_data = arr[:, col_idx] - shift + 1.0
