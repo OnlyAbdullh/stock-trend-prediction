@@ -52,8 +52,8 @@ def run_epoch(
             X = X.to(device, non_blocking=True)  # (batch, seq_len, input_size)
             y = y.to(device, non_blocking=True).float()  # (batch,)
 
-            logits = model(X)  # (batch,)
-            loss = criterion(logits, y)
+            # logits = model(X)  # (batch,)
+            # loss = criterion(logits, y)
             if train:
                 optimizer.zero_grad()
             if USE_MIXED_PRECISION and train:
