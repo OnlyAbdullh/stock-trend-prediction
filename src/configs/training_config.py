@@ -62,22 +62,22 @@ FOURTH_CONFIG = TrainingConfig(
 
 FIFTH_CONFIG = TrainingConfig(
     name="fifth",
-    hidden_size=128,
+    hidden_size=25,
     num_layers=2,
     bidirectional=True,
     dropout=0.3,
     batch_size=256,
-    learning_rate=5e-4,
+    learning_rate=1e-3,
     window_size=60,
 )
 
 SIXTH_CONFIG = TrainingConfig(
     name="sixth",
-    hidden_size=128,
-    num_layers=2,
-    bidirectional=True,
+    hidden_size=32,
+    num_layers=1,
+    bidirectional=False,
     dropout=0.35,
-    batch_size=256,
+    batch_size=512,
     learning_rate=8e-4,
     window_size=60,
 )
@@ -177,3 +177,224 @@ ALL_CONFIGS = {
     'config_09': NINTH_CONFIG,
     'config_10': TENTH_CONFIG,
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+TrainingConfig(
+    name="sixth",
+    hidden_size=128,
+    num_layers=2,
+    bidirectional=True,
+    dropout=0.35,
+    batch_size=256,
+    learning_rate=8e-4,
+    window_size=60,
+)
+workers = 4
+train_loader = DataLoader(
+        train_ds,
+        batch_size=1024,
+        shuffle=True,
+        num_workers=workers,
+        pin_memory=True,
+        prefetch_factor=2,
+    )
+Starting training from scratch...
+train: 100%|██████████| 7568/7568 [05:33<00:00, 22.68it/s, loss=0.6652]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.29it/s, loss=0.7014]
+Epoch 001 | train_loss=0.6730  train_acc=0.5807  val_loss=0.7292  val_acc=0.4564
+train: 100%|██████████| 7568/7568 [05:48<00:00, 21.69it/s, loss=0.6269]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.29it/s, loss=0.6747]
+Epoch 002 | train_loss=0.6438  train_acc=0.6183  val_loss=0.7448  val_acc=0.4892
+train: 100%|██████████| 7568/7568 [05:50<00:00, 21.57it/s, loss=0.6061]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.19it/s, loss=0.6865]
+Epoch 003 | train_loss=0.6227  train_acc=0.6447  val_loss=0.7383  val_acc=0.5103
+train: 100%|██████████| 7568/7568 [05:49<00:00, 21.67it/s, loss=0.6037]
+val: 100%|██████████| 1622/1622 [00:31<00:00, 52.22it/s, loss=0.6841]
+Epoch 004 | train_loss=0.6077  train_acc=0.6616  val_loss=0.7488  val_acc=0.5185
+train: 100%|██████████| 7568/7568 [05:33<00:00, 22.71it/s, loss=0.6101]
+val: 100%|██████████| 1622/1622 [00:31<00:00, 51.91it/s, loss=0.7024]
+Epoch 005 | train_loss=0.5954  train_acc=0.6745  val_loss=0.7830  val_acc=0.5120
+train: 100%|██████████| 7568/7568 [05:33<00:00, 22.72it/s, loss=0.5891]
+val: 100%|██████████| 1622/1622 [00:31<00:00, 52.05it/s, loss=0.7458]
+Epoch 006 | train_loss=0.5856  train_acc=0.6839  val_loss=0.8117  val_acc=0.5082
+train: 100%|██████████| 7568/7568 [05:36<00:00, 22.51it/s, loss=0.5825]
+val: 100%|██████████| 1622/1622 [00:31<00:00, 51.60it/s, loss=0.7731]
+Epoch 007 | train_loss=0.5778  train_acc=0.6914  val_loss=0.8158  val_acc=0.5061
+train: 100%|██████████| 7568/7568 [05:50<00:00, 21.59it/s, loss=0.5550]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.08it/s, loss=0.7888]
+Epoch 008 | train_loss=0.5720  train_acc=0.6969  val_loss=0.8325  val_acc=0.5063
+train: 100%|██████████| 7568/7568 [05:49<00:00, 21.68it/s, loss=0.5587]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.29it/s, loss=0.7543]
+Epoch 009 | train_loss=0.5670  train_acc=0.7017  val_loss=0.8288  val_acc=0.5125
+train: 100%|██████████| 7568/7568 [05:48<00:00, 21.73it/s, loss=0.5558]
+val: 100%|██████████| 1622/1622 [00:35<00:00, 46.04it/s, loss=0.7827]
+Epoch 010 | train_loss=0.5632  train_acc=0.7050  val_loss=0.8391  val_acc=0.5105
+
+
+
+import torch
+import torch.nn as nn
+
+
+class GRUModel(nn.Module):
+    def __init__(
+            self,
+            input_size: int,
+            hidden_size: int = 128,
+            num_layers: int = 2,
+            dropout: float = 0.3,
+            bidirectional: bool = True,
+    ):
+        super().__init__()
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+
+        self.num_directions = 2 if bidirectional else 1
+        self.actual_hidden_size = hidden_size * self.num_directions
+
+        self.gru = nn.GRU(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=bidirectional,
+        )
+
+        self.batch_norm = nn.BatchNorm1d(self.actual_hidden_size)
+
+        self.fc1 = nn.Linear(self.actual_hidden_size, 12)
+        self.relu = nn.ReLU()
+        self.dropout1 = nn.Dropout(dropout)
+
+        self.fc2 = nn.Linear(12, 6)
+        self.dropout2 = nn.Dropout(dropout)
+
+        self.fc3 = nn.Linear(6, 1)
+
+
+
+"""
+
+"""
+TrainingConfig(
+    name="fifth",
+    hidden_size=25,
+    num_layers=2,
+    bidirectional=True,
+    dropout=0.3,
+    batch_size=256,
+    learning_rate=1e-3,
+    window_size=60,
+)
+workers = 4
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=cfg.batch_size,
+        shuffle=True,
+        num_workers=workers,
+        pin_memory=True,
+        prefetch_factor=2,
+    )
+Starting training from scratch...
+train: 100%|██████████████| 30272/30272 [06:59<00:00, 72.13it/s, loss=0.6853]
+val: 100%|█████████████████| 6487/6487 [00:48<00:00, 133.94it/s, loss=0.7287]
+Epoch 001 | train_loss=0.6711  train_acc=0.5775  val_loss=0.7250  val_acc=0.4845
+train: 100%|██████████████| 30272/30272 [07:32<00:00, 66.94it/s, loss=0.6540]
+val: 100%|██████████████████| 6487/6487 [01:13<00:00, 88.40it/s, loss=0.7216]
+Epoch 002 | train_loss=0.6578  train_acc=0.6009  val_loss=0.7427  val_acc=0.4832
+train: 100%|██████████████| 30272/30272 [07:15<00:00, 69.48it/s, loss=0.6196]
+val: 100%|█████████████████| 6487/6487 [00:52<00:00, 122.87it/s, loss=0.7186]
+Epoch 003 | train_loss=0.6514  train_acc=0.6110  val_loss=0.7372  val_acc=0.5051
+train: 100%|██████████████| 30272/30272 [07:17<00:00, 69.26it/s, loss=0.6135]
+val: 100%|█████████████████| 6487/6487 [00:52<00:00, 124.75it/s, loss=0.7067]
+Epoch 004 | train_loss=0.6479  train_acc=0.6160  val_loss=0.7426  val_acc=0.4973
+train: 100%|██████████████| 30272/30272 [07:04<00:00, 71.39it/s, loss=0.6651]
+val: 100%|█████████████████| 6487/6487 [00:51<00:00, 125.20it/s, loss=0.6975]
+Epoch 005 | train_loss=0.6454  train_acc=0.6195  val_loss=0.7272  val_acc=0.5085
+train: 100%|██████████████| 30272/30272 [06:30<00:00, 77.44it/s, loss=0.5924]
+val: 100%|█████████████████| 6487/6487 [00:55<00:00, 116.79it/s, loss=0.7147]
+Epoch 006 | train_loss=0.6436  train_acc=0.6225  val_loss=0.7571  val_acc=0.4972
+train: 100%|██████████████| 30272/30272 [06:57<00:00, 72.42it/s, loss=0.6419]
+val: 100%|█████████████████| 6487/6487 [00:51<00:00, 126.77it/s, loss=0.6940]
+Epoch 007 | train_loss=0.6420  train_acc=0.6247  val_loss=0.7477  val_acc=0.5043
+train: 100%|██████████████| 30272/30272 [06:52<00:00, 73.44it/s, loss=0.6166]
+val: 100%|█████████████████| 6487/6487 [00:57<00:00, 113.06it/s, loss=0.7145]
+Epoch 008 | train_loss=0.6406  train_acc=0.6265  val_loss=0.7618  val_acc=0.4914
+train: 100%|██████████████| 30272/30272 [06:46<00:00, 74.43it/s, loss=0.6278]
+val: 100%|█████████████████| 6487/6487 [00:52<00:00, 122.61it/s, loss=0.6955]
+Epoch 009 | train_loss=0.6397  train_acc=0.6278  val_loss=0.7310  val_acc=0.5112
+train: 100%|██████████████| 30272/30272 [06:02<00:00, 83.46it/s, loss=0.6220]
+val: 100%|█████████████████| 6487/6487 [00:48<00:00, 133.74it/s, loss=0.6793]
+Epoch 010 | train_loss=0.6390  train_acc=0.6287  val_loss=0.7446  val_acc=0.5105
+
+
+
+class GRUModel(nn.Module):
+    def __init__(
+            self,
+            input_size: int,
+            hidden_size: int = 128,
+            num_layers: int = 2,
+            dropout: float = 0.3,
+            bidirectional: bool = True,
+    ):
+        super().__init__()
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+
+        self.num_directions = 2 if bidirectional else 1
+        self.actual_hidden_size = hidden_size * self.num_directions
+
+        self.gru = nn.GRU(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=bidirectional,
+        )
+
+        self.batch_norm = nn.BatchNorm1d(self.actual_hidden_size)
+
+        self.fc1 = nn.Linear(self.actual_hidden_size, 16)
+        self.relu = nn.ReLU()
+        self.dropout1 = nn.Dropout(dropout)
+
+        self.fc2 = nn.Linear(16, 4)
+        self.dropout2 = nn.Dropout(dropout)
+
+        self.fc3 = nn.Linear(4, 1)
+
+
+
+
+"""
