@@ -277,7 +277,7 @@ df_features[float_cols] = df_features[float_cols].astype(np.float32)
 
 
 print("Actual columns:", df_features.columns.tolist())
-model_cuurent_columns = [c for c in feature_columns if c in df_features.columns]
+model_cuurent_columns = [c for c in model_columns if c in df_features.columns]
 df_model = df_features.loc[:, model_cuurent_columns]
 print(df_model.head())
 print("Dataset shape before cleaning:", df_model.shape)

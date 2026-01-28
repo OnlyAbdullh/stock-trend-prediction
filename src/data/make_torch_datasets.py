@@ -14,7 +14,7 @@ from tqdm import tqdm
 import pandas as pd
 def build_samples(window_size = 60):
     print("Loading CSV...")
-    df = pd.read_csv('../data/processed/new_stocks_features2.csv')
+    df = pd.read_csv('D:\Stock_trend_project\data\processed\\new_stocks_features2.csv')
 
     ticker_data = {}
     samples = []

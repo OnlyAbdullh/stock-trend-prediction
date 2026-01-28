@@ -1,10 +1,13 @@
-from typing import Dict, List,Optional
+from typing import Dict, List, Optional
 from src.data.make_torch_datasets import build_samples, split_samples_time_based
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader
+from src.configs.training_config import BASELINE, BIDIRECTIONAL_STRONG, DEEP_NETWORK, FAST_EXPERIMENTAL, FIRST_CONFIG
+
+CFG = DEEP_NETWORK
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -57,12 +60,12 @@ def train_model(
     train_loader: DataLoader,
     val_loader: DataLoader,
     num_epochs: int,
-    lr: float = 1e-3,
+    config: object,
 ):
     model.to(device)
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     history: Dict[str, List[float]] = {
         "train_loss": [],
@@ -116,44 +119,27 @@ def train_model(
 
 if __name__ == "__main__":
     torch.manual_seed(42)
-    # samples = build_samples(window_size=60)
-    # train_s, val_s, test_s = split_samples_time_based(samples)
-    #
-    # train_ds = StockDataset(train_s, window_size=60, horizon=30)
-    # val_ds = StockDataset(val_s, window_size=60, horizon=30)
-    # test_ds = StockDataset(test_s, window_size=60, horizon=30)
-    #
-    # train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-    # val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
-    # test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
-    #
-    # #X0, y0 = train_ds[0]
-    # #INPUT_SIZE = X0.shape[1]
-    # X_batch, y_batch = next(iter(train_loader))
-    # input_size = X_batch.shape[2]
 
-    num_train = 512
-    num_val = 128
-    seq_len = 60
-    input_size = 10
+    samples = build_samples(window_size=CFG.window_size)
+    train_s, val_s, test_s = split_samples_time_based(samples)
 
-    X_train = torch.randn(num_train, seq_len, input_size)
-    X_val = torch.randn(num_val, seq_len, input_size)
+    train_ds = StockDataset(train_s, window_size=CFG.window_size, horizon=30)
+    val_ds = StockDataset(val_s, window_size=CFG.window_size, horizon=30)
+    test_ds = StockDataset(test_s, window_size=CFG.window_size, horizon=30)
 
-    y_train = torch.randint(0, 2, (num_train,), dtype=torch.float32)
-    y_val = torch.randint(0, 2, (num_val,), dtype=torch.float32)
+    train_loader = DataLoader(train_ds, batch_size=CFG.batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=CFG.batch_size, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=CFG.batch_size, shuffle=False)
 
-    train_ds = TensorDataset(X_train, y_train)
-    val_ds = TensorDataset(X_val, y_val)
-
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
+    X_batch, y_batch = next(iter(train_loader))
+    input_size = X_batch.shape[2]
 
     model = GRUModel(
         input_size=input_size,
-        hidden_size=128,
-        num_layers=2,
-        bidirectional=False,
+        hidden_size=CFG.hidden_size,
+        num_layers=CFG.num_layers,
+        dropout=CFG.dropout,
+        bidirectional=CFG.bidirectional,
     )
 
     print("Starting training...")
@@ -161,8 +147,8 @@ if __name__ == "__main__":
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        num_epochs=30,
-        lr=1e-2,
+        num_epochs=4,
+        config=CFG,
     )
 
     print("Training finished.")
