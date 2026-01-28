@@ -93,6 +93,7 @@ def train_loop(
     optimizer: Optional[torch.optim.Optimizer] = None,
     history: Optional[Dict[str, List[float]]] = None,
     best_val_loss: float = float("inf"),
+    start_epoch: int = 0,
 ):
     model.to(device)
     scaler = torch.amp.GradScaler("cuda") if USE_MIXED_PRECISION else None
@@ -106,7 +107,7 @@ def train_loop(
 
     best_state_dict = None
 
-    for epoch in range(1, num_epochs + 1):
+    for epoch in range(start_epoch + 1, start_epoch + num_epochs + 1):
         train_metrics = run_epoch(
             model=model,
             loader=train_loader,
@@ -279,6 +280,7 @@ if __name__ == "__main__":
             optimizer=optimizer,
             history=history_old,
             best_val_loss=best_val_loss,
+            started_epoch=trained_epochs
         )
 
     if torch.cuda.is_available():
