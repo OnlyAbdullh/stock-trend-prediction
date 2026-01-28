@@ -7,6 +7,7 @@ from typing import List, Tuple
 
 from src.data.stock_dataset import StockDataset
 from sklearn.preprocessing import RobustScaler, StandardScaler
+from scipy import stats
 
 np.random.seed(42)
 torch.manual_seed(42)
@@ -124,39 +125,90 @@ def split_samples_time_based(
 
 
 def normalize_ticker_data(ticker_data, train_samples):
-    """Normalize features: fit on train, transform on all"""
 
-    # Feature groups
-    no_scale = ['is_up_day', 'month_sin', 'month_cos', 'price_position_20']
-    robust_cols = [0, 1, 8, 9, 10, 11, 12, 13, 18, 19, 20]  # Indices of robust features
-    zscore_cols = [2, 3, 4, 5, 6, 7, 14, 15, 16, 17]  # Indices of zscore features
-    standard_cols = [21]  # Index of K
+    # --- تعريف الفهارس بناءً على قائمة FEATURE_COLS الأصلية في make_torch_datasets.py ---
+    # ملاحظة: PVT_cumsum هو الفهرس 18، MOBV هو 19
+    robust_cols = [0, 1, 8, 9, 10, 11, 12, 13, 18, 19, 20]
+    zscore_cols = [2, 3, 4, 5, 6, 7, 14, 15, 16, 17]
+    standard_cols = [21]  # K
 
-    print("Collecting training data for normalization...")
-    train_data = []
+    # ميزات تحتاج Winsorization (حسب test-test.py)
+    # volatility_20(6), high_low_ratio(1), parkinson_volatility(8), price_to_MA...(2,3,4)
+    winsor_params = {
+        6: (1, 99), 1: (1, 99), 8: (1, 99),
+        2: (0.5, 99), 3: (0.5, 99), 4: (0.5, 99)
+    }
+
+    # ميزات Box-Cox (الميزات الموجبة ذات الالتواء العالي)
+    boxcox_indices = [6, 1, 8]
+
+    def _process_array_logic(data_array, is_training=False, scalers=None):
+        """وظيفة داخلية لتطبيق المنطق التسلسلي على مصفوفة أي ticker"""
+        arr = data_array.copy()
+
+        # 1. تحويل PVT_cumsum (18) و MOBV (19) إلى نسبة تغير
+        # بما أننا لا نعدل build_samples، نحسب الفرق بين كل يوم والذي قبله
+        for idx in [18, 19]:
+            # حساب pct_change: (current - prev) / prev
+            prev_vals = np.roll(arr[:, idx], 1)
+            prev_vals[0] = arr[0, idx]  # تجنب NaN في العنصر الأول
+
+            # منع القسمة على صفر
+            denom = np.where(prev_vals == 0, 1e-9, prev_vals)
+            pct_change = (arr[:, idx] - prev_vals) / denom
+            arr[:, idx] = np.clip(pct_change, -0.5, 0.5)
+
+        # 2. تطبيق Winsorization
+        for col_idx, (low, high) in winsor_params.items():
+            l_val = np.percentile(arr[:, col_idx], low)
+            h_val = np.percentile(arr[:, col_idx], high)
+            arr[:, col_idx] = np.clip(arr[:, col_idx], l_val, h_val)
+
+        # 3. تطبيق Box-Cox (يجب أن تكون القيم موجبة)
+        for col_idx in boxcox_indices:
+            shift = np.min(arr[:, col_idx])
+            shifted_data = arr[:, col_idx] - shift + 1.0
+            # ملاحظة: Box-Cox يفضل تطبيقه بـ Lambda ثابتة في الـ Transform،
+            # لكن هنا سنستخدم التبسيط المباشر كما في ملف التست
+            transformed, _ = stats.boxcox(shifted_data)
+            arr[:, col_idx] = transformed
+
+        if not is_training and scalers:
+            # 4. Scaling
+            arr[:, robust_cols] = scalers['robust'].transform(arr[:, robust_cols])
+            arr[:, zscore_cols] = scalers['zscore'].transform(arr[:, zscore_cols])
+            arr[:, standard_cols] = scalers['standard'].transform(arr[:, standard_cols])
+
+            # 5. Final Clipping ±4 std
+            # استثناء الميزات الزمنية (15, 16, 17) و price_position_20 (12)
+            skip_clip = [12, 15, 16, 17]
+            for c in range(arr.shape[1]):
+                if c not in skip_clip:
+                    arr[:, c] = np.clip(arr[:, c], -4, 4)
+
+        return arr
+
+    print("Preparing Training Data for Fitting...")
+    # تجميع بيانات التدريب وتطبيق التحويلات الأولية عليها
+    raw_train_list = []
     for ticker, i, _, _ in train_samples:
-        train_data.append(ticker_data[ticker][i])
-    train_data = np.array(train_data)
+        raw_train_list.append(ticker_data[ticker][i])
+    train_data_stack = np.array(raw_train_list)
 
-    print("Fitting scalers on training data...")
-    robust_scaler = RobustScaler()
-    zscore_scaler = StandardScaler()
-    standard_scaler = StandardScaler()
+    # معالجة بيانات التدريب قبل الـ Fit
+    processed_train = _process_array_logic(train_data_stack, is_training=True)
 
-    robust_scaler.fit(train_data[:, robust_cols])
-    zscore_scaler.fit(train_data[:, zscore_cols])
-    standard_scaler.fit(train_data[:, standard_cols])
+    print("Fitting Scalers...")
+    scalers = {
+        'robust': RobustScaler().fit(processed_train[:, robust_cols]),
+        'zscore': StandardScaler().fit(processed_train[:, zscore_cols]),
+        'standard': StandardScaler().fit(processed_train[:, standard_cols])
+    }
 
     print("Normalizing all ticker data...")
     normalized_ticker_data = {}
     for ticker, data in tqdm(ticker_data.items(), desc="Normalizing"):
-        normalized = data.copy()
-        normalized[:, robust_cols] = robust_scaler.transform(data[:, robust_cols])
-        normalized[:, zscore_cols] = zscore_scaler.transform(data[:, zscore_cols])
-        normalized[:, standard_cols] = standard_scaler.transform(data[:, standard_cols])
-        normalized_ticker_data[ticker] = normalized
+        normalized_ticker_data[ticker] = _process_array_logic(data, is_training=False, scalers=scalers)
 
-
-    print("✓ Normalization complete (fit on train, transformed all)")
+    print("✓ Normalization complete (All test-test.py steps applied)")
     return normalized_ticker_data
-
