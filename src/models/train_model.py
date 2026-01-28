@@ -102,8 +102,8 @@ def train_loop(
     if optimizer is None:
        optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=cfg.learning_rate,
-        weight_decay=1e-5
+        lr=cfg.learning_rate, 
+        weight_decay=cfg.weight_decay  
 )
 
 
