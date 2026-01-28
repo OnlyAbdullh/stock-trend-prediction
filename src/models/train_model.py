@@ -14,13 +14,13 @@ from src.data.make_torch_datasets import (
     normalize_ticker_data,
 )
 from src.data.stock_dataset import StockDataset
-from src.models.gru_model import GRUModel
-from src.configs.training_config import FIRST_CONFIG, SECOND_CONFIG, TrainingConfig,CONFIG_ONLY1,CONFIG_ONLY2
- 
+from src.models.gru_model import GRUModel  
 CFG = CONFIG_ONLY2
 MODE = "train"            
 CHECKPOINT_PATH = r"D:\Stock_trend_project\\models\\gru_second_20260128_135122.pt"     
 
+from src.configs.training_config import *
+  
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_MIXED_PRECISION = torch.cuda.is_available()
 if USE_MIXED_PRECISION:
@@ -102,8 +102,8 @@ def train_loop(
     if optimizer is None:
        optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=cfg.learning_rate,
-        weight_decay=cfg.weight_decay
+        lr=cfg.learning_rate, 
+        weight_decay=cfg.weight_decay  
 )
 
 
@@ -280,7 +280,7 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=4,  
+            num_epochs=5,
             cfg=cfg,
             optimizer=optimizer,
             history=history_old,
