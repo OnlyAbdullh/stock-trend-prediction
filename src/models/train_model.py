@@ -280,7 +280,7 @@ if __name__ == "__main__":
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            num_epochs=4,  
+            num_epochs=5,
             cfg=cfg,
             optimizer=optimizer,
             history=history_old,
