@@ -3,22 +3,31 @@
 from dataclasses import dataclass
 from os import name
  
+from dataclasses import dataclass
+
 @dataclass
 class TrainingConfig:
     name: str = "default"
     window_size: int = 60
+
+    # Model
+    model_type: str = "gru"   
     hidden_size: int = 32
     num_layers: int = 2
     bidirectional: bool = False
     dropout: float = 0.4
+
+    # Training
     batch_size: int = 64
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
-    optimizer: str = 'Adam'
+    optimizer: str = "Adam"
+
 
  
 FIRST_CONFIG = TrainingConfig(
     name="first",
+    model_type="gru",
     hidden_size=64,
     num_layers=2,
     bidirectional=True,
@@ -30,6 +39,7 @@ FIRST_CONFIG = TrainingConfig(
 
 SECOND_CONFIG = TrainingConfig(
     name="second",
+    model_type="gru",
     hidden_size=96,
     num_layers=2,
     bidirectional=False,
@@ -54,6 +64,7 @@ without L2
 """
 THIRD_CONFIG = TrainingConfig(
     name="third",
+    model_type="gru",
     hidden_size=64,
     num_layers=2,
     bidirectional=True,
@@ -80,6 +91,7 @@ THIRD_CONFIG = TrainingConfig(
 # Epoch 005 | train_loss=0.6147  train_acc=0.6506  val_loss=0.7792  val_acc=0.4833
 FOURTH_CONFIG = TrainingConfig(
     name="fourth",
+    model_type="gru",
     hidden_size=96,
     num_layers=2,
     bidirectional=True,
@@ -91,6 +103,7 @@ FOURTH_CONFIG = TrainingConfig(
 
 FIFTH_CONFIG = TrainingConfig(
     name="fifth",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -102,6 +115,7 @@ FIFTH_CONFIG = TrainingConfig(
 
 SIXTH_CONFIG = TrainingConfig(
     name="sixth",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -113,6 +127,7 @@ SIXTH_CONFIG = TrainingConfig(
 
 SEVENTH_CONFIG = TrainingConfig(
     name="seventh",
+    model_type="gru",
     hidden_size=128,
     num_layers=2,
     bidirectional=True,
@@ -124,6 +139,7 @@ SEVENTH_CONFIG = TrainingConfig(
 
 EIGHTH_CONFIG = TrainingConfig(
     name="eighth",
+    model_type="gru",
     hidden_size=96,
     num_layers=3,
     bidirectional=True,
@@ -135,6 +151,7 @@ EIGHTH_CONFIG = TrainingConfig(
 
 NINTH_CONFIG = TrainingConfig(
     name="ninth",
+    model_type="gru",
     hidden_size=192,
     num_layers=2,
     bidirectional=True,
@@ -178,6 +195,7 @@ NINTH_CONFIG = TrainingConfig(
 
 TENTH_CONFIG = TrainingConfig(
     name="tenth",
+    model_type="gru",
     hidden_size=160,
     num_layers=3,
     bidirectional=True,
@@ -208,6 +226,7 @@ ALL_CONFIGS = {
 }
 CONFIG_ONLY1 = TrainingConfig(
     name="only1",
+    model_type="gru",
     hidden_size=32,
     num_layers=2,
     bidirectional=False,
@@ -225,6 +244,7 @@ with L2"""
 
 CONFIG_ONLY2 = TrainingConfig(
     name="only2",
+    model_type="gru",
     hidden_size=25,
     num_layers=2,
     bidirectional=False,
