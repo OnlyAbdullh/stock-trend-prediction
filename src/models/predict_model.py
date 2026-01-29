@@ -14,8 +14,7 @@ def main():
     print("\nLoading test data...")
     test_df = pd.read_csv('data/raw/test.csv')
     test_df['Date'] = pd.to_datetime(test_df['Date'])
-    print(f"✓ Test samples: {len(test_df)}")
-
+    
     checkpoint_path = args[1]
     print("Loading model...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,15 +45,12 @@ def main():
         
     window_size = 60
     predictions = []
-    failed_tickers = []
-
+    
     for idx, row in tqdm(test_df.iterrows(), total=len(test_df), desc="Predicting"):
         ticker_id = row['ID']
         target_date = row['Date']
 
-        # Check if ticker exists in our data
         if ticker_id not in ticker_dict:
-            failed_tickers.append((ticker_id, "not_found"))
             predictions.append(1)
             continue
 
@@ -62,28 +58,21 @@ def main():
         dates = ticker_data['dates']
         features = ticker_data['features']
 
-        # Find the last index before target_date
         mask = dates < target_date
         if mask.sum() < window_size:
-            failed_tickers.append((ticker_id, "insufficient_data"))
             predictions.append(1)
             continue
 
-        # Get indices of data before target date
         valid_indices = np.where(mask)[0]
 
-        # Take last 60 indices
         last_60_indices = valid_indices[-window_size:]
 
-        # Extract features (already numpy array!)
         X = features[last_60_indices].copy()
 
-        # Convert to tensor and add batch dimension
         X_tensor = torch.from_numpy(X).unsqueeze(0).to(device)
 
-        # Make prediction
         with torch.no_grad():
-            with torch.amp.autocast('cuda'):  # Using your working syntax
+            with torch.amp.autocast('cuda'):  
                 logits = model(X_tensor)
 
             prob = torch.sigmoid(logits).item()
