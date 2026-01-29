@@ -210,17 +210,6 @@ def main(input_filepath: str):
     df = pd.read_csv(input_path)
     # basic clean
     df = run_basic_clean_df(df)
-    # basic_clean_path = interim_dir / "train_clean_basic.csv"
-    # logging.info("Saving basic cleaned data to %s", basic_clean_path)
-    # df.to_csv(basic_clean_path, index=False)
-    # # بعد 2010
-    # df = filter_after_2010_df(df) # moved to basic_clean_run
-
-    # not necessary now
-    # after_2010_path = interim_dir / "train_clean_after_2010.csv"
-    # logging.info("Saving data after 2010-01-01 to %s", after_2010_path)
-    # df.to_csv(after_2010_path, index=False)
-    # إزالة الأسهم الفاسدة
     df, removed_tickers = remove_corrupted_tickers_df(
         df,
         price_col="close",

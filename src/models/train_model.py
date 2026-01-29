@@ -15,11 +15,8 @@ from src.data.make_torch_datasets import (
 )
 from src.data.stock_dataset import StockDataset
 from src.models.gru_model import GRUModel
-# from src.models.gru_attention_model import GRUModelWithAttention
 from src.configs.training_config import *
 from src.visualization.visualize import plot_training_curves
-
-# from src.models.transformer_model import TemporalTransformer
 
  
 CFG = TENTH_CONFIG

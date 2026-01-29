@@ -193,7 +193,6 @@ def normalize_df_sc1(df, scalers):
 
 
 def get_q_limits(df, columns):
-    """حساب حدود 1% و 99% من بيانات التدريب فقط"""
     limits = {}
     for col in columns:
         limits[col] = (df[col].quantile(0.01), df[col].quantile(0.99))
@@ -201,7 +200,6 @@ def get_q_limits(df, columns):
 
 
 def apply_clipping(df, limits):
-    """تطبيق القص بناءً على الحدود المحسوبة مسبقاً"""
     df_clipped = df.copy()
     for col, (low, high) in limits.items():
         if col in df_clipped.columns:
@@ -210,25 +208,20 @@ def apply_clipping(df, limits):
 
 
 def normalize_df_mode2(df_train, df_val, df_test):
-    # 1. حساب حدود Q (1-99) من التدريب فقط
     q_columns = z_plus_q + robust_plus_q
     q_limits = get_q_limits(df_train, q_columns)
 
-    # 2. تطبيق القص (Clipping)
     train_c = apply_clipping(df_train, q_limits)
     val_c = apply_clipping(df_val, q_limits)
     test_c = apply_clipping(df_test, q_limits)
 
-    # 3. تجهيز الـ Scalers بالاعتماد على بيانات التدريب (بعد القص)
     scalers = {
         "z": StandardScaler().fit(train_c[z_only + z_plus_q]),
         "robust": RobustScaler().fit(train_c[robust_only + robust_plus_q]),
         "max_abs": MaxAbsScaler().fit(train_c[max_abs_only]),
-        # حالة خاصة Volatility: Robust ثم Z (سنطبق Robust أولاً للجميع)
         "vol_robust": RobustScaler().fit(train_c[robust_plus_z])
     }
 
-    # حساب Z-score لـ volatility بعد تحويلها بـ Robust
     vol_robust_train = scalers["vol_robust"].transform(train_c[robust_plus_z])
     scalers["vol_z"] = StandardScaler().fit(vol_robust_train)
 
