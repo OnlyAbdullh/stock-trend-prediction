@@ -9,58 +9,26 @@ from statsmodels.tsa.stattools import acf, pacf
 import warnings
 warnings.filterwarnings('ignore')
 
-# Set style for better visualizations
 sns.set_style("whitegrid")
 plt.rcParams['figure.figsize'] = (15, 8)
 plt.rcParams['font.size'] = 10
 
-print("="*80)
-print("STOCK PRICE PREDICTION - FEATURE ANALYSIS")
-print("="*80)
-print("\nObjective: Determine optimal sequence length for RNN input")
-print("Target: Predict if close price > current price after 30 trading days")
-print("="*80)
-# ============================================================================
-# SECTION 1: DATA LOADING AND INITIAL PREPROCESSING
-# ============================================================================
+
 
 print("\n[1] LOADING DATA...")
-# Load the dataset
 df = pd.read_csv('D:/Development/PycharmProjects/stock-trend-prediction/data/interim/train_clean_after_2010_and_bad_tickers.csv')
 
-# Convert date to datetime
 df['date'] = pd.to_datetime(df['date'])
 df = df[df['open'] != 0]
-
-# Sort by ticker and date
 df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
-
 print(f"Total records: {len(df):,}")
-print(f"Unique tickers: {df['ticker'].nunique():,}")
-print(f"date range: {df['date'].min()} to {df['date'].max()}")
-print(f"\nMemory usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
-
-# Display basic statistics
-print("\n" + "="*80)
-print("DATA OVERVIEW")
-print("="*80)
-print(df.head())
-print("\nData types:")
-print(df.dtypes)
 print("\nMissing values:")
 print(df.isnull().sum())
-# ============================================================================
-# SECTION 2: FEATURE ENGINEERING
-# ============================================================================
-print("\n" + "="*80)
+
 print("[2] ENGINEERING FEATURES...")
-print("="*80)
 
 def engineer_features(df):
-    """
-    Engineer features and keep only selected high-quality features
-    in the order they were originally created.
-    """
+
     df = df.copy()
     df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
     grouped = df.groupby('ticker')
@@ -200,26 +168,15 @@ def engineer_features(df):
 
     return df
 
-
-# Apply feature engineering
 df_features = engineer_features(df)
 
 import gc
 del df
 gc.collect()
-#
-print("\n✓ Feature engineering complete!")
-print(f"Total features created: 31")
-# print(f"Rows with complete features: {df_features.dropna().shape[0]:,}")
 
 df_features = df_features.sort_values(['ticker', 'date'])
-# Columns needed to identify rows (NOT features)
 id_columns = ['ticker', 'date']
-
-# Target
 target_column = ['target']
-
-# Final feature list (28 features)
 feature_columns = [
     # Price Features (3)
     'daily_return',
@@ -250,26 +207,25 @@ feature_columns = [
     'is_up_day',
 
     # Volume Price Index (3) - Highest MI!
-    'PVT_cumsum',           # MI = 0.0426 ⭐️⭐️⭐️
-    'MOBV',                 # MI = 0.0209 ⭐️⭐️
+    'PVT_cumsum',           
+    'MOBV',                
 
     # Directional Movement (4)
-    'MTM',                  # MI = 0.0127 ⭐️
+    'MTM',                  
 
     # OverBought & OverSold (1)
-    'ADTM',                 # MI = 0.0104
+    'ADTM',               
 
     # Energy & Volatility (2)
-    'PSY',                  # MI = 0.0085
-    'VHF',                  # MI = 0.0088
+    'PSY',                 
+    'VHF',               
 
     # Stochastic (1)
-    'K',                    # MI = 0.0083
+    'K',                    
 
-    # Raw Features
+    
 
 ]
-# Combine all required columns
 model_columns = id_columns +['missing_days'] + ['close'] + feature_columns + target_column
 
 float_cols = df_features.select_dtypes(include=['float64']).columns
@@ -279,54 +235,30 @@ df_features[float_cols] = df_features[float_cols].astype(np.float32)
 print("Actual columns:", df_features.columns.tolist())
 model_cuurent_columns = [c for c in model_columns if c in df_features.columns]
 df_model = df_features.loc[:, model_cuurent_columns]
-print(df_model.head())
-print("Dataset shape before cleaning:", df_model.shape)
 existing_cols = df_features.columns.tolist()
 
-# Keep only valid columns
 model_cuurent_columns = [c for c in model_cuurent_columns if c in existing_cols]
-
-print(f"Final model columns ({len(model_cuurent_columns)}): {model_cuurent_columns}")
-print("Shape BEFORE cleaning:", df_model.shape)
-
 nan_rows = df_model.isna().any(axis=1).sum()
-print("Rows containing at least one NaN:", nan_rows)
 
 nan_percent = (nan_rows / len(df_model)) * 100
-print(f"Percentage of dataset that has NaN rows: {nan_percent:.2f}%")
-
 df_clean = df_model.dropna().reset_index(drop=True)
 
-print("Shape AFTER cleaning:", df_clean.shape)
 print("Rows removed:", len(df_model) - len(df_clean))
 print("Remaining NaN values:", df_clean.isna().sum().sum())
 
 path = r'D:/Development/PycharmProjects/stock-trend-prediction/data/processed/data.csv'
 df_model = df_features[model_cuurent_columns].dropna()
 df_model.to_csv(path, index=False, chunksize=100_000)
-print("ML dataset exported successfully")
-
-print("Total NaN values:", df_clean.isna().sum().sum())
-
 nan_rows = df_clean.isna().any(axis=1).sum()
 print("Rows containing NaN:", nan_rows)
-
 print("Total rows:", len(df_clean))
 print("NaN row percentage:", nan_rows / len(df_clean) * 100)
-
-
-
-
 numeric_df = df_clean.select_dtypes(include=[np.number])
 
 total_inf = np.isinf(numeric_df).sum().sum()
 print("Total INF values:", total_inf)
 
 inf_rows = np.isinf(numeric_df).any(axis=1).sum()
-print("Rows containing INF:", inf_rows)
-
 inf_per_col = np.isinf(numeric_df).sum().sort_values(ascending=False)
-print(inf_per_col)
-
 inf_percent = (inf_rows / len(df_clean)) * 100
 print(f"Percentage of dataset containing INF rows: {inf_percent:.2f}%")
