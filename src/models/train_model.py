@@ -11,18 +11,22 @@ import pandas as pd
 from src.data.make_torch_datasets import (
     split_dataframe_by_date,
     build_samples_from_df,
-     normalize_df,
+    normalize_df,
 )
 from src.data.stock_dataset import StockDataset
+from src.models.gru_attention_model import GRUModelWithAttention
 from src.models.gru_model import GRUModel
+# from src.models.gru_attention_model import GRUModelWithAttention
 from src.configs.training_config import *
 from src.visualization.visualize import plot_training_curves
 
- 
-CFG = TENTH_CONFIG
+# from src.models.transformer_model import TemporalTransformer
+
+
+CFG = SIXTH_CONFIG
 MODE = "train"
 CHECKPOINT_PATH = r"models/gru_tenth_20260128_134436.pt"
-NORMALIZATION_MODE = "norm2" #  norm1 , norm2
+NORMALIZATION_MODE = "norm1"  # norm1 , norm2 , norm3 , norm4 , norm5
 NUMBER_EPOCHS = 5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -182,16 +186,16 @@ def train_loop(
 
     return model, history
 
-def build_data(cfg):
 
+def build_data(cfg):
     df = pd.read_csv('data/processed/data.csv')
     df['date'] = pd.to_datetime(df['date'])
-    
+
     train_df, val_df, test_df = split_dataframe_by_date(
         df, train_ratio=0.7, val_ratio=0.15
     )
     print("Normalizing")
-    train_df,val_df,test_df =  normalize_df(train_df, val_df,test_df,NORMALIZATION_MODE)
+    train_df, val_df, test_df = normalize_df(train_df, val_df, test_df, NORMALIZATION_MODE)
     del df
     import gc
     gc.collect()
@@ -206,7 +210,6 @@ def build_data(cfg):
     test_samples, test_ticker_data = build_samples_from_df(
         test_df, window_size=cfg.window_size, horizon=30
     )
-
 
     train_ds = StockDataset(
         train_samples,
@@ -251,11 +254,12 @@ def build_data(cfg):
         pin_memory=True,
         prefetch_factor=2,
     )
-    
+
     x0, _ = train_ds[0]
     input_size = x0.shape[-1]
     return train_loader, val_loader, test_loader, input_size
- 
+
+
 def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
     mt = cfg.model_type.lower()
 
@@ -266,9 +270,19 @@ def build_model_from_config(input_size: int, cfg: TrainingConfig) -> nn.Module:
             num_layers=cfg.num_layers,
             dropout=cfg.dropout,
             bidirectional=cfg.bidirectional,
-        ) 
+        )
+    elif mt == "gru_attention":
+        return GRUModelWithAttention(
+            input_size=input_size,
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            bidirectional=cfg.bidirectional,
+            attention_dropout=cfg.attention_dropout
+        )
     else:
         raise ValueError(f"Unknown model_type: {cfg.model_type}")
+
 
 if __name__ == "__main__":
     torch.manual_seed(42)

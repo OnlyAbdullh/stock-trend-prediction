@@ -16,6 +16,7 @@ class TrainingConfig:
     num_layers: int = 2
     bidirectional: bool = False
     dropout: float = 0.4
+    attention_dropout: float=0.4
 
     # Training
     batch_size: int = 64
@@ -240,7 +241,7 @@ CONFIG_ONLY2 = TrainingConfig(
 )
 
 # AYDI_1_config:
-SEVENTH_CONFIG = TrainingConfig(
+SEVENTH_CONFIG2 = TrainingConfig(
     name="seventh",
     hidden_size=18,
     num_layers=1,
@@ -361,3 +362,16 @@ Epoch 009 | train_loss=0.6397  train_acc=0.6278  val_loss=0.7310  val_acc=0.5112
 Epoch 010 | train_loss=0.6390  train_acc=0.6287  val_loss=0.7446  val_acc=0.5105
 
 """
+CONFIG_ONLY3 = TrainingConfig(
+    name="only3",
+    model_type="gru_attention",
+    hidden_size=64,
+    num_layers=2,
+    bidirectional=False,
+    dropout=0.3,
+    batch_size=256,
+    learning_rate=5e-4,
+    window_size=45,
+    weight_decay=1e-4,
+    attention_dropout=0.3,
+)
