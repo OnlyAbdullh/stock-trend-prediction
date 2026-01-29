@@ -64,14 +64,31 @@ THIRD_CONFIG = TrainingConfig(
 FOURTH_CONFIG = TrainingConfig(
     name="fourth",
     model_type="gru",
-    hidden_size=96, # => 32
+    hidden_size=96,
     num_layers=2,
-    bidirectional=False, # => False
+    bidirectional=False,
     dropout=0.3,
-    batch_size=256,
+    batch_size=128,
     learning_rate=5e-4,
-    window_size=60, # => 30
+    window_size=30,
 )
+
+"""
+
+norm2 
+
+Starting training from scratch...
+train: 100%|████████████████████████████████████████████████████████| 60904/60904 [12:47<00:00, 79.32it/s, loss=0.6246]
+val: 100%|█████████████████████████████████████████████████████████| 11668/11668 [00:49<00:00, 237.29it/s, loss=0.7030]
+Epoch 001 | train_loss=0.6620  train_acc=0.5956  val_loss=0.7495  val_acc=0.4706
+train: 100%|████████████████████████████████████████████████████████| 60904/60904 [11:28<00:00, 88.49it/s, loss=0.6205]
+val: 100%|█████████████████████████████████████████████████████████| 11668/11668 [00:57<00:00, 202.48it/s, loss=0.6629]
+Epoch 002 | train_loss=0.6425  train_acc=0.6218  val_loss=0.7545  val_acc=0.4836
+train: 100%|████████████████████████████████████████████████████████| 60904/60904 [11:10<00:00, 90.90it/s, loss=0.6131]
+val: 100%|█████████████████████████████████████████████████████████| 11668/11668 [00:48<00:00, 242.21it/s, loss=0.6786]
+Epoch 003 | train_loss=0.6349  train_acc=0.6305  val_loss=0.7557  val_acc=0.4835
+
+"""
 
 Manar1 = TrainingConfig(
     name="Manar1",
@@ -227,13 +244,13 @@ NINTH_CONFIG = TrainingConfig(
 TENTH_CONFIG = TrainingConfig(
     name="tenth",
     model_type="gru",
-    hidden_size=160,
-    num_layers=3,
+    hidden_size=96,
+    num_layers=2,
     bidirectional=False,
     dropout=0.4,
-    batch_size=512,
-    learning_rate=2e-4,
-    window_size=75,
+    batch_size=256,
+    learning_rate=3e-4,
+    window_size=40,
 )
 
 CONFIG_ONLY1 = TrainingConfig(
@@ -317,8 +334,35 @@ Saved checkpoint to: D:\Development\PycharmProjects\stock-trend-prediction\model
 
 
 
+ALAA_CONFIG_4 = TrainingConfig(
+    name="alaa3",
+    model_type="gru",
+    hidden_size=48,
+    num_layers=2,
+    bidirectional=False,
+    dropout=0.35,
+    batch_size=256,
+    learning_rate=3e-4,
+    weight_decay=5e-4,
+    window_size=45,
+)
 
+"""
 
+PS D:\Development\PycharmProjects\stock-trend-prediction> python -m src.models.train_model
+Normalizing
+Building samples: 100%|███████████████████████████████████████████████████████████| 4365/4365 [00:10<00:00, 409.18it/s]
+Building samples: 100%|██████████████████████████████████████████████████████████| 4770/4770 [00:04<00:00, 1051.35it/s]
+Building samples: 100%|██████████████████████████████████████████████████████████| 4924/4924 [00:04<00:00, 1024.66it/s]
+Starting training from scratch...
+train: 100%|████████████████████████████████████████████████████████| 30108/30108 [09:12<00:00, 54.49it/s, loss=0.6739]
+val: 100%|███████████████████████████████████████████████████████████| 5553/5553 [00:39<00:00, 139.40it/s, loss=0.7116]
+Epoch 001 | train_loss=0.6750  train_acc=0.5776  val_loss=0.7340  val_acc=0.4522
+train: 100%|████████████████████████████████████████████████████████| 30108/30108 [09:05<00:00, 55.16it/s, loss=0.6724]
+val: 100%|███████████████████████████████████████████████████████████| 5553/5553 [00:39<00:00, 140.14it/s, loss=0.7172]
+Epoch 002 | train_loss=0.6718  train_acc=0.5812  val_loss=0.7264  val_acc=0.4506
+
+"""
 
 
 

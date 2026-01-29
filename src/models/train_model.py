@@ -22,10 +22,10 @@ from src.visualization.visualize import plot_training_curves
 # from src.models.transformer_model import TemporalTransformer
 
  
-CFG = SIXTH_CONFIG
+CFG = TENTH_CONFIG
 MODE = "train"
 CHECKPOINT_PATH = r"models/gru_tenth_20260128_134436.pt"
-NORMALIZATION_MODE = "norm1" #  norm1 , norm2 , norm3 , norm4 , norm5
+NORMALIZATION_MODE = "norm2" #  norm1 , norm2
 NUMBER_EPOCHS = 5
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

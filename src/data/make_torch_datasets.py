@@ -6,7 +6,7 @@ import torch
 from typing import List, Tuple, Dict
 
 from src.data.stock_dataset import StockDataset
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler, MaxAbsScaler
 from scipy import stats
 from torch.utils.data import DataLoader
 
@@ -106,7 +106,7 @@ def split_dataframe_by_date(
     test_df = df.iloc[val_end:].copy()
     return train_df, val_df, test_df
 
-
+# Mode 1
 no_need_scaling = [
     "is_up_day",
     "month_sin",
@@ -142,18 +142,27 @@ zscore_features = [
 
 standard_scaler_features = ["K"]
 
+# Mode 2
+z_only = ["ADTM", "K", "price_position_20", "RSI_14"]
+z_plus_q = [
+    "daily_return", "MA_60_slope", "MOBV", "MTM",
+    "price_to_MA5", "price_to_MA20", "price_to_MA60",
+    "PVT_cumsum", "recent_high_20"
+]
+robust_only = ["max_drawdown_20", "VHF"]
+robust_plus_q = [
+    "distance_from_high", "downside_deviation_10",
+    "high_low_ratio", "low_to_close_ratio", "parkinson_volatility"
+]
+robust_plus_z = ["volatility_20"]
+max_abs_only = ["PSY"]
+no_scaling_mode2 = ["is_up_day", "month_sin", "month_cos"]
 
 def normalize_df(df_train, df_val, df_test, norm_mode="norm1"):
     if norm_mode == "norm1":
-        df_train, df_val, df_test = normalize_df_mode1(df_train, df_val, df_test)
-    # elif norm_mode == 'norm2':
-    #     normalized_data = normalize_ticker_data_mode2(ticker_data,train_samples)
-    # elif norm_mode == 'norm3':
-    #     normalized_data = normalize_ticker_data_mode3(ticker_data,train_samples)
-    # elif norm_mode == 'norm4':
-    #     normalized_data = normalize_ticker_data_mode4(ticker_data,train_samples)
-    # else:
-    #     normalized_data = normalize_ticker_data_mode5(ticker_data,train_samples)
+        return normalize_df_mode1(df_train, df_val, df_test)
+    elif norm_mode == "norm2":
+        return normalize_df_mode2(df_train, df_val, df_test)
 
     return df_train, df_val, df_test
 
@@ -165,13 +174,13 @@ def normalize_df_mode1(df_train, df_val, df_test):
         "std": StandardScaler().fit(df_train[standard_scaler_features]),
     }
     return (
-        normalize_df_sc(df_train, scalars),
-        normalize_df_sc(df_val, scalars),
-        normalize_df_sc(df_test, scalars),
+        normalize_df_sc1(df_train, scalars),
+        normalize_df_sc1(df_val, scalars),
+        normalize_df_sc1(df_test, scalars),
     )
 
 
-def normalize_df_sc(df, scalers):
+def normalize_df_sc1(df, scalers):
     df_scaled = df.copy()
     df_scaled[robust_scaling_features] = scalers["robust"].transform(
         df[robust_scaling_features]
@@ -181,3 +190,64 @@ def normalize_df_sc(df, scalers):
         df[standard_scaler_features]
     )
     return df_scaled
+
+
+def get_q_limits(df, columns):
+    """حساب حدود 1% و 99% من بيانات التدريب فقط"""
+    limits = {}
+    for col in columns:
+        limits[col] = (df[col].quantile(0.01), df[col].quantile(0.99))
+    return limits
+
+
+def apply_clipping(df, limits):
+    """تطبيق القص بناءً على الحدود المحسوبة مسبقاً"""
+    df_clipped = df.copy()
+    for col, (low, high) in limits.items():
+        if col in df_clipped.columns:
+            df_clipped[col] = df_clipped[col].clip(lower=low, upper=high)
+    return df_clipped
+
+
+def normalize_df_mode2(df_train, df_val, df_test):
+    # 1. حساب حدود Q (1-99) من التدريب فقط
+    q_columns = z_plus_q + robust_plus_q
+    q_limits = get_q_limits(df_train, q_columns)
+
+    # 2. تطبيق القص (Clipping)
+    train_c = apply_clipping(df_train, q_limits)
+    val_c = apply_clipping(df_val, q_limits)
+    test_c = apply_clipping(df_test, q_limits)
+
+    # 3. تجهيز الـ Scalers بالاعتماد على بيانات التدريب (بعد القص)
+    scalers = {
+        "z": StandardScaler().fit(train_c[z_only + z_plus_q]),
+        "robust": RobustScaler().fit(train_c[robust_only + robust_plus_q]),
+        "max_abs": MaxAbsScaler().fit(train_c[max_abs_only]),
+        # حالة خاصة Volatility: Robust ثم Z (سنطبق Robust أولاً للجميع)
+        "vol_robust": RobustScaler().fit(train_c[robust_plus_z])
+    }
+
+    # حساب Z-score لـ volatility بعد تحويلها بـ Robust
+    vol_robust_train = scalers["vol_robust"].transform(train_c[robust_plus_z])
+    scalers["vol_z"] = StandardScaler().fit(vol_robust_train)
+
+    return (
+        normalize_df_sc2(train_c, scalers),
+        normalize_df_sc2(val_c, scalers),
+        normalize_df_sc2(test_c, scalers)
+    )
+
+def normalize_df_sc2(df_in, scalers):
+    df_out = df_in.copy()
+    # Z-Score
+    df_out[z_only + z_plus_q] = scalers["z"].transform(df_in[z_only + z_plus_q])
+    # Robust
+    df_out[robust_only + robust_plus_q] = scalers["robust"].transform(df_in[robust_only + robust_plus_q])
+    # Max Abs
+    df_out[max_abs_only] = scalers["max_abs"].transform(df_in[max_abs_only])
+    # Volatility (R + Z)
+    vol_r = scalers["vol_robust"].transform(df_in[robust_plus_z])
+    df_out[robust_plus_z] = scalers["vol_z"].transform(vol_r)
+
+    return df_out
