@@ -319,6 +319,7 @@ if __name__ == "__main__":
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         history_old = ckpt.get("history", None)
+        trained_epochs = 0
         if history_old is not None:
             trained_epochs = len(history_old.get("train_loss", []))
             print(f"Model was previously trained for {trained_epochs} epochs.")
